@@ -440,24 +440,18 @@ if len(sys.argv) == 1 :
 	Help()
 else :
 	if sys.argv[1] == '-Dash':
+		Interface_Main_Dash.Dash_CreateGenomeDATA()
 
-		if sys.argv[2] == '-Genome' :
-			Interface_Main_Dash.Dash_CreateGenomeDATA(sys.argv[3], sys.argv[4])
+	elif sys.argv[1] == '-TE' :
+		SelectionTE(sys.argv[2])
 
-		elif sys.argv[3] == '-TE' :
-			SelectionTE(sys.argv[3])
+	elif sys.argv[1] == '-Genome' :
+		CreateGenomeDATA(sys.argv[2], sys.argv[3])
 
-	else:
-		if sys.argv[1] == '-Genome' :
-			CreateGenomeDATA(sys.argv[2], sys.argv[3])
-
-		elif sys.argv[1] == '-TE' :
-			SelectionTE()
-
-		elif sys.argv[1] == '-h' or sys.argv[1] == '-help' :
-			Help()
-		else :
-			Help()
+	elif sys.argv[1] == '-h' or sys.argv[1] == '-help' :
+		Help()
+	else :
+		Help()
 
 
 

@@ -26,27 +26,38 @@ def online_download(url, saving_path):
     for chunk in response.iter_content(chunk_size=chunkSize):
         internetFile.write(chunk)
 
-def Dash_CreateGenomeDATA(GenomeName, TEmethod):
+def Dash_CreateGenomeDATA():
 
     global pathVisual
     global pathVisualDATA
-
-    pathVisual = 'VisualTE3__' + str(GenomeName) + '__' + str(TEmethod)
-
-    if not os.path.exists(pathVisual):
-        os.mkdir(pathVisual)
-
-    pathVisualDATA = pathVisual + '/Downloaded'
-
-    if not os.path.exists(pathVisualDATA):
-        os.mkdir(pathVisualDATA)
 
     app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
     app.layout = html.Div([
 
         html.H1(children='VisualTE V3', style = {'textAlign': 'center'}),
 
-        html.H3(children='Select your appropriate files for {} with method {}'.format(GenomeName, TEmethod), style = {'textAlign': 'center'}),
+        html.Div([
+            html.H3(children = "Enter your genome name and method name", id = "main-text"),
+            dcc.Input(
+              id="genome-name-entry",
+              type="text",
+              placeholder="Enter your genome name here",
+              style={
+                  'width': '20%'
+              }),
+
+            dcc.Input(
+              id="method-name-entry",
+              type="text",
+              placeholder="Repet or RepeatMasker or Blast",
+              style={
+                  'width': '20%',
+                  'margin' : '20px'
+              }),
+
+            html.Button('Initiate', id='initiatition', n_clicks=0),
+
+        ]),
 
         html.Hr(),
 
@@ -68,10 +79,12 @@ def Dash_CreateGenomeDATA(GenomeName, TEmethod):
                     'borderRadius': '5px',
                     'textAlign': 'center'}),
             html.Div(id='TE-filename')
-        ], style = {
+        ], id = "TE-container",style = {
             'float':'left',
             'width' :'25%',
             'height': '10%',
+            'display' : 'none'
+
             }),
 
         html.Div([
@@ -128,7 +141,6 @@ def Dash_CreateGenomeDATA(GenomeName, TEmethod):
               ], id = 'genome-container-yes'),
 
         html.Div([
-                  html.P("Download your wished genome"),
                   dcc.Input(
                     id="genome-entry",
                     type="text",
@@ -219,6 +231,61 @@ def Dash_CreateGenomeDATA(GenomeName, TEmethod):
             }),
 
     ])
+
+    @app.callback(
+        [Output("genome-name-entry", "style"), Output("method-name-entry", "style"), Output("initiatition", "style"), Output("main-text", "children"), Output("main-text", "style"), Output("TE-container", "style")],
+        Input("initiatition", "n_clicks"),
+        State("genome-name-entry", "value"),
+        State("method-name-entry", "value"),
+    )
+
+    def start(click, GenomeName, TEmethod):
+
+        global pathVisual
+        global pathVisualDATA
+
+        if click and GenomeName is not None and TEmethod is not None:
+
+            pathVisual = 'VisualTE3__' + str(GenomeName) + '__' + str(TEmethod)
+
+            if not os.path.exists(pathVisual):
+                os.mkdir(pathVisual)
+
+            pathVisualDATA = pathVisual + '/Downloaded'
+
+            if not os.path.exists(pathVisualDATA):
+                os.mkdir(pathVisualDATA)
+
+            genome_name_entry = {'display': 'none'}
+
+            genome_name_entry = {'display': 'none'}
+
+            init_button = {'display': 'none'}
+
+            main_text = "Working on {} with {} method".format(GenomeName, TEmethod)
+
+            main_text_style = {'textAlign': 'center'}
+
+            style = {
+                'float':'left',
+                'width' :'25%',
+                'height': '10%',
+                'display' : 'block'
+
+                }
+
+            return genome_name_entry, genome_name_entry, init_button, main_text, main_text_style, style
+        else:
+            style = {
+                'float':'left',
+                'width' :'25%',
+                'height': '10%',
+                'display' : 'none'
+
+                }
+            return {'display': 'inline', 'width': '20%'}, {'display': 'inline', 'width': '20%','margin' : '20px'}, {'display': 'inline'}, "Enter your genome name and method name" , None, style
+
+
 
     @app.callback(
         [Output('TE-filename', 'children'), Output('genome-container', 'style'), Output('GO-container', 'style')],
