@@ -83,6 +83,7 @@ def Dash_CreateGenomeDATA():
             'float':'left',
             'width' :'25%',
             'height': '10%',
+            'margin' : '20px',
             'display' : 'none'
 
             }),
@@ -90,8 +91,6 @@ def Dash_CreateGenomeDATA():
         html.Div([
 
             html.H6("Upload your genome files"),
-
-            html.P('Do you have the files in your machine ?'),
 
             html.Div([
 
@@ -146,10 +145,20 @@ def Dash_CreateGenomeDATA():
                     type="text",
                     placeholder="Enter your genome name",
                     style={
-                        'width': '80%'
+                        'width': '80%',
+                        'margin' : '10px'
                     }),
 
-                    html.Button('Download', id='submit-genome', n_clicks=0),
+                    html.Button('Download', id='submit-genome', n_clicks=0,
+                        style={
+                            'width': '80%',
+                            'margin' : '10px'
+                    }),
+
+                    dcc.Loading(
+                        type="circle",
+                        children=html.Div(id="loading-output-genome", style={'margin':'20px'})
+                        ),
 
                     html.Div(id = "genome-download-output")
 
@@ -159,13 +168,12 @@ def Dash_CreateGenomeDATA():
             'float':'left',
             'width' :'25%',
             'height': '10%',
+            'margin' : '20px',
             'display' : 'none'
             }),
         html.Div([
 
             html.H6("Upload your GO files"),
-
-            html.P('Do you have the files in your machine ?'),
 
             html.Div([
 
@@ -216,17 +224,20 @@ def Dash_CreateGenomeDATA():
 
         html.Div([
 
-            html.Button("Download necessary GO files", id="GO-download", n_clicks = 0),
+            html.Button("Download GO files", id="GO-download", n_clicks = 0, style={
+                'width': '80%',
+                'margin' : '10px'
+                }),
 
             html.Div(id = "GO-download-output")
 
             ], id = 'GO-container-no'),
 
-
         ],id = 'GO-container',style = {
             'float':'left',
             'width' :'25%',
             'height': '10%',
+            'margin' : '20px',
             'display' : 'none'
             }),
 
@@ -270,6 +281,7 @@ def Dash_CreateGenomeDATA():
                 'float':'left',
                 'width' :'25%',
                 'height': '10%',
+                'margin' : '20px',
                 'display' : 'block'
 
                 }
@@ -295,7 +307,7 @@ def Dash_CreateGenomeDATA():
         if filename is not None:
             if len(filename) > 30:
                 filename = filename[:10]+"..."+filename[-10:]
-            return 'Selected file : {}'.format(filename), {'display': 'block', 'float':'left', 'width' :'20%', 'height': '10%'}, {'display': 'block', 'float':'left', 'width' :'20%', 'height': '10%'}
+            return 'Selected file : {}'.format(filename), {'display': 'block', 'float':'left', 'width' :'20%', 'height': '10%', 'margin' : '20px'}, {'display': 'block', 'float':'left', 'width' :'20%', 'height': '10%', 'margin' : '20px'}
         else:
             return None, {'display': 'none'}, {'display': 'none'}
 
@@ -327,7 +339,7 @@ def Dash_CreateGenomeDATA():
             return [{'display': 'none'},{'display': 'none'}]
 
     @app.callback(
-        Output("genome-download-output","children"),
+        [Output("genome-download-output","children"), Output("loading-output-genome", "children")],
         Input("submit-genome", "n_clicks"),
         State('genome-entry','value')
         )
@@ -335,20 +347,21 @@ def Dash_CreateGenomeDATA():
     def download_genome(submit, GenomeName):
 
         if GenomeName is None:
-            return None
+            return None, None
+        try:
+            FNAaTelecharger, FNAsize, GFFaTelecharger, GFFsize, ftpAdress = Interface_DownloadGenomes.lanceTelechargement(GenomeName, pathVisualDATA)
 
-        print(GenomeName)
-        FNAaTelecharger, FNAsize, GFFaTelecharger, GFFsize, ftpAdress = Interface_DownloadGenomes.lanceTelechargement(GenomeName, pathVisualDATA)
+            temp = pathVisualDATA + '/' + FNAaTelecharger
+            url = ftpAdress + FNAaTelecharger
+            online_download(url, temp)
 
-        temp = pathVisualDATA + '/' + FNAaTelecharger
-        url = ftpAdress + FNAaTelecharger
-        online_download(url, temp)
+            temp = pathVisualDATA + '/' + GFFaTelecharger
+            url = ftpAdress + GFFaTelecharger
+            online_download(url, temp)
 
-        temp = pathVisualDATA + '/' + GFFaTelecharger
-        url = ftpAdress + GFFaTelecharger
-        online_download(url, temp)
-
-        return "downloaded {} FNA and GFF files".format(GenomeName)
+            return "downloaded {} FNA and GFF files".format(GenomeName), None
+        except Exception:
+            return "Couldn't find {} genome files".format(GenomeName), None
 
     @app.callback(
         Output("GO-download-output", "children"),
