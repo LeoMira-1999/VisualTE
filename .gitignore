@@ -1,0 +1,7 @@
+# macOS Files
+.DS_Store
+
+#Non coding data
+
+/Scripts/DATA/
+/Scripts/__pycache__/
