@@ -3,7 +3,12 @@
 
 # Non coding data
 
+<<<<<<< HEAD
 Scripts/DATA/
 Scripts/__pycache__/
+=======
+/Scripts/DATA/
+/Scripts/__pycache__/
+>>>>>>> 583c63efa829e6434ce29a538b89785603123a65
 
 VisualTE3*/
