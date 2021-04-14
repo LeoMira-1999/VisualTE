@@ -1,7 +1,9 @@
 # macOS Files
 .DS_Store
 
-#Non coding data
+# Non coding data
 
-/Scripts/DATA/
-/Scripts/__pycache__/
+Scripts/DATA/
+Scripts/__pycache__/
+
+VisualTE3*/
