@@ -14,37 +14,37 @@ from . import Interface_SettingVariables
 
 
 ########################################################################################################################
-###	Transform the ChipSEQ data in faster data for the extraction 
+###	Transform the ChipSEQ data in faster data for the extraction
 ########################################################################################################################
 def TransformChipSEQ(pathVisualDATA, pathVisualDATA2, root, progressTask, textProcess, nbLigneText, insertionText) :
-	
+
 	textProcess.insert(insertionText, '\tTransformation of ChipSEQ files in chromosome ChipSEQ files ...\n')
 	nbLigneText += 1
 	insertionText = str(nbLigneText) + '.0'
 	root.update()
 	print('\tTransformation of ChipSEQ files')
-	
+
 	CompteFichier = 0
 	for nomFichier in os.listdir(pathVisualDATA2):
 		if(os.path.isdir(nomFichier) != True):
 			CompteFichier += 1
-			
+
 	# Create a dictionnary for the CHipSEQ
 	dicoChipSEQ = {}
 	cle = "All\tTissue\tAll"
 	dicoChipSEQ[cle] = 0
 	cle = "All\tOrgan\tAll"
 	dicoChipSEQ[cle] = 0
-	
+
 	progressTask["value"] = 0
 	progressTask["maximum"] = CompteFichier
 	progressTask.start()
-	
+
 	dictionnaire_ficher = {}
 	recompte = 0
 	for nomFichier in os.listdir(pathVisualDATA2):
 		if(os.path.isdir(nomFichier) != True):
-			
+
 			nomFichier2 = pathVisualDATA2 + '/' + nomFichier
 			f = open(nomFichier2, "r")
 			lignes = f.readlines()
@@ -58,28 +58,28 @@ def TransformChipSEQ(pathVisualDATA, pathVisualDATA2, root, progressTask, textPr
 				decoupe[1] = decoupe[1][:-4]
 			if decoupe[2][-4:] == '_CELL' :
 				decoupe[2] = decoupe[2][:-4]
-				
-			
+
+
 			recompte += 1
 			# Change the progress bar of the interfaces
 			if recompte % 100 == 0 and recompte > 0 :
 				progressTask.step(100)
 				root.update()
-			
+
 			for i in range(1, len(lignes), 1) :
 				lignes[i] = lignes[i].rstrip()
 				coupe = lignes[i].split(',')
 				coupe.append(decoupe[1])
 				coupe.append(decoupe[2])
 				coupe.append(decoupe[0])
-					
+
 				indice = round(int(coupe[1]) / 50000000)
 				if coupe[0] in dictionnaire_ficher.keys() :
 					if dictionnaire_ficher[coupe[0]] < indice :
 						dictionnaire_ficher[coupe[0]] = indice
 				else :
 					dictionnaire_ficher[coupe[0]] = indice
-					
+
 				fname = pathVisualDATA2 + '/' + coupe[0] + "___part" + str(indice) + ".txt"
 				if os.path.isfile(fname) :
 					out_file = open(fname, 'a')
@@ -88,14 +88,14 @@ def TransformChipSEQ(pathVisualDATA, pathVisualDATA2, root, progressTask, textPr
 						out_file.write('\t' + coupe[i])
 					out_file.write('\n')
 					out_file.close()
-				else : 
+				else :
 					out_file = open(fname, 'w')
 					out_file.write(coupe[0])
 					for i in range(1, len(coupe), 1) :
 						out_file.write('\t' + coupe[i])
 					out_file.write('\n')
 					out_file.close()
-					
+
 				# Fill the dictionnary for the CHipSEQ
 				decoupeTissue = decoupe[1].split('__')
 				for i in range(0, len(decoupeTissue), 1) :
@@ -135,12 +135,12 @@ def TransformChipSEQ(pathVisualDATA, pathVisualDATA2, root, progressTask, textPr
 						dicoChipSEQ[cle] = 1
 					cle = "All\tOrgan\tAll"
 					dicoChipSEQ[cle] += 1
-					
-			os.remove(nomFichier2) 
+
+			os.remove(nomFichier2)
 			print('\t\t', recompte, 'ChipSEQ files transformed in', CompteFichier, 'total files')
-	
-	
-	
+
+
+
 	########################################################################################################################
 	# Create the first version of the table of CHipSEQ
 	dicoLigne = {}
@@ -150,7 +150,7 @@ def TransformChipSEQ(pathVisualDATA, pathVisualDATA2, root, progressTask, textPr
 		dicoColonne[coupe[0]] = 1
 		cle = coupe[1] + '\t' + coupe[2]
 		dicoLigne[cle] = 1
-		
+
 	temp = pathVisualDATA + '/TableChipSeq.txt'
 	f = open(temp, "a")
 	f.write(' \t \t')
@@ -168,9 +168,9 @@ def TransformChipSEQ(pathVisualDATA, pathVisualDATA2, root, progressTask, textPr
 		f.write('\n')
 	f.write('\n')
 	f.close()
-	
-	
-	
+
+
+
 	# Here I will fill the dictionnary for the CommonData files
 	Interface_SettingVariables.dictionary_organ = {}
 	Interface_SettingVariables.dictionary_tissue = {}
@@ -178,13 +178,13 @@ def TransformChipSEQ(pathVisualDATA, pathVisualDATA2, root, progressTask, textPr
 		coupe = y.split('\t')
 		if coupe[0] == 'Tissue' :
 			Interface_SettingVariables.dictionary_tissue[coupe[1]] = 1
-		else : 
+		else :
 			Interface_SettingVariables.dictionary_organ[coupe[1]] = 1
-		
-		
-		
-	
-	
+
+
+
+
+
 	########################################################################################################################
 	# transform ChipSEQ files into dataframe and Merge them into one file
 	CompteFichier = 0
@@ -201,7 +201,7 @@ def TransformChipSEQ(pathVisualDATA, pathVisualDATA2, root, progressTask, textPr
 	nbLigneText += 1
 	insertionText = str(nbLigneText) + '.0'
 	root.update()
-	
+
 	recompte = 0
 	for nomFichier in os.listdir(pathVisualDATA2):
 		if(os.path.isdir(nomFichier) != True) :
@@ -209,7 +209,7 @@ def TransformChipSEQ(pathVisualDATA, pathVisualDATA2, root, progressTask, textPr
 			f = open(nomFichier2, "r")
 			lignes = f.readlines()
 			f.close()
-			
+
 			fichierBED = nomFichier2 + '.bed'
 			futurDataframe = []
 			for x in range(0, len(lignes), 1) :
@@ -219,17 +219,17 @@ def TransformChipSEQ(pathVisualDATA, pathVisualDATA2, root, progressTask, textPr
 			dataFrame_For_Dash = pd.DataFrame(futurDataframe, columns = ['Chr ID', 'Start', 'End', 'Orientation', 'Score', 'Gene', 'Type', 'Tissue', 'Organ', 'ChipSeq Name'])
 			dataFrame_For_Dash.Start = pd.to_numeric(dataFrame_For_Dash.Start, errors='coerce')
 			dataFrame_For_Dash.End = pd.to_numeric(dataFrame_For_Dash.End, errors='coerce')
-			sortedDF = dataFrame_For_Dash.sort_values(by=['Start', 'End'], ascending=True) 
+			sortedDF = dataFrame_For_Dash.sort_values(by=['Start', 'End'], ascending=True)
 			sortedDF.to_csv(fichierBED, index = False) # relative position
-			
+
 			recompte += 1
 			# Change the progress bar of the interfaces
 			if recompte % 100 == 0 and recompte > 0 :
 				progressTask.step(100)
 				root.update()
-			
+
 			os.remove(nomFichier2)
-	
+
 	tempString = '\t\tMerge ' + str(CompteFichier) + ' ChipSEQ files into dataFrame'
 	print(tempString)
 	tempString = tempString + '\n'
@@ -261,21 +261,21 @@ def TransformChipSEQ(pathVisualDATA, pathVisualDATA2, root, progressTask, textPr
 
 
 ########################################################################################################################
-###	Download the first list of all ChipSeq Experiments in genome 
+###	Download the first list of all ChipSeq Experiments in genome
 ########################################################################################################################
 def TelechargeExperiments(genome) :
-	
+
 	# Force return from the server in JSON format
 	headers = {'accept': 'application/json'}
 	# This searches the ENCODE database for the phrase "human"
-	url = 'https://www.encodeproject.org/search/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=' + genome + '&assay_title=TF+ChIP-seq&type=Replicate&status!=deleted&status!=revoked&status!=replaced&status=released&format=json&limit=all'  
+	url = 'https://www.encodeproject.org/search/?type=Experiment&replicates.library.biosample.donor.organism.scientific_name=' + genome + '&assay_title=TF+ChIP-seq&type=Replicate&status!=deleted&status!=revoked&status!=replaced&status=released&format=json&limit=all'
 	#GET the search result
 	response = requests.get(url)
-	
+
 	# Extract the JSON response as a python dictionary
 	search_results = response.json()
 	premiereListe = json.dumps(search_results, indent=8)
-	
+
 	# Extract the list of experiments
 	secondListe = []
 	stringExperiment = "\"@id\": \"/experiments/ENC"
@@ -284,7 +284,7 @@ def TelechargeExperiments(genome) :
 		if decoupe[i].find(stringExperiment) != -1 :
 			recoupe = decoupe[i].split('/')
 			secondListe.append(recoupe[len(recoupe)-2])
-	
+
 	return secondListe
 
 
@@ -299,7 +299,7 @@ def DownloadExperimentsDATA(experimentName):
 	# Extract the JSON response as a python dictionary
 	search_results = response.json()
 	jsondata = json.dumps(search_results, indent=8)
-	
+
 	decoupe = jsondata.split("\n")
 	filename = experimentName + '.txt'
 	out_file = open(filename, 'w')
@@ -314,17 +314,17 @@ def DownloadExperimentsDATA(experimentName):
 ########################################################################################################################
 ###	READ the Experiments information
 ########################################################################################################################
-def readExperiments(experimentName) : 
-	
+def readExperiments(experimentName) :
+
 	filename = experimentName + '.txt'
 	# memorize lines from file
 	f = open(filename, "r")
 	lignes = f.readlines()
 	f.close()
-	
+
 	for i in range(0, len(lignes), 1) :
 		lignes[i] = lignes[i].rstrip()
-	
+
 	listeBed = []
 	for i in range(0, len(lignes)-2, 1) :
 		if lignes[i] == "                {" and lignes[i-1] == "                }," and lignes[i+1].find('accession') != -1 :
@@ -345,39 +345,39 @@ def readExperiments(experimentName) :
 				if data_from_experiment[z].find(filtre_format_type) != -1 :
 					filters = filters + 1
 				if data_from_experiment[z].find(filtre_output1) != -1 or data_from_experiment[z].find(filtre_output2) != -1 or data_from_experiment[z].find(filtre_output3) != -1 :
-					filters = filters + 1	
-			
+					filters = filters + 1
+
 			if filters >= 3 :
 				recoupe = data_from_experiment[0].split('\"')
 				listeBed.append(recoupe[len(recoupe)-2])
-	
-	os.remove(filename) 
+
+	os.remove(filename)
 	return listeBed
-	
-	
-	
-	
-	
-	
+
+
+
+
+
+
 ########################################################################################################################
 ###	Uncompress File
 ########################################################################################################################
 def Decompress(fichierAtelecharger, pathVisualDATA, listeFichier) :
-	
+
 	#GET the search result
 	response = requests.get(fichierAtelecharger)
 	emplacement = pathVisualDATA + listeFichier + '.bed.gz'
 	with open(emplacement, 'wb') as f:
 		f.write(response.content)
 	decompressFile = pathVisualDATA + listeFichier + '.bed'
-	
+
 	fichier = open(decompressFile, 'wb')
 	f = gzip.GzipFile(emplacement, 'rb')
 	file_content = f.read()
 	fichier.write(file_content)
 	fichier.close()
 	os.remove(emplacement)
-	
+
 	return decompressFile
 
 
@@ -387,15 +387,15 @@ def Decompress(fichierAtelecharger, pathVisualDATA, listeFichier) :
 ####################################################################################################################################
 # lecture simple des lignes du fichier
 def LectureFichier(pathVisualDATA, fichier, assemblage, dataset, developmental, tissueGeneral, organ, cellule, gene, target):
-	
+
 	dict_tissue = {}
 	dict_organ = {}
-	
+
 	# memorize lines from file
 	f = open(fichier, "r")
 	lignes = f.readlines()
 	f.close()
-	
+
 	futurDataframe = [[]]
 	for i in range(0, len(lignes), 1) :
 		decoupe = lignes[i].split('\t')
@@ -406,15 +406,15 @@ def LectureFichier(pathVisualDATA, fichier, assemblage, dataset, developmental, 
 		temp.append(target)
 		futurDataframe.append(temp)
 	del(futurDataframe[0])
-		
-		
-		
+
+
+
 	# create the name of the bed file
 	fichierBED = pathVisualDATA
 	coupe = fichier.split("/")
 	recoupe = coupe[len(coupe)-1].split(".")
 	fichierBED = fichierBED + recoupe[0] + '___'
-	
+
 	# get the tissue name
 	if len(tissueGeneral) > 0 :
 		for z in range(0, len(tissueGeneral), 1) :
@@ -425,7 +425,7 @@ def LectureFichier(pathVisualDATA, fichier, assemblage, dataset, developmental, 
 			fichierBED += '__' + tissueGeneral[z]
 	else :
 		fichierBED += '__' + "UNKNOWN"
-		
+
 	# get the organ name
 	fichierBED = fichierBED + '___'
 	if len(organ) > 0 :
@@ -437,11 +437,11 @@ def LectureFichier(pathVisualDATA, fichier, assemblage, dataset, developmental, 
 			fichierBED += '__' + organ[z]
 	else :
 		fichierBED += '__' + "UNKNOWN"
-		
+
 	fichierBED = fichierBED + '.bed'
-	
-	
-	
+
+
+
 	# ajout du dataframe dans un nouveau fichier ou un ancien
 	if os.path.exists(fichierBED) :
 		dataFrame_temp = pd.read_csv(fichierBED)
@@ -460,23 +460,23 @@ def LectureFichier(pathVisualDATA, fichier, assemblage, dataset, developmental, 
 	dataFrame_For_Dash = pd.DataFrame(futurDataframe, columns = ['Chr ID', 'Start', 'End', 'Orientation', 'Score', 'Gene', 'Target'])
 	dataFrame_For_Dash.to_csv(fichierBED, index = False) # relative position
 	os.remove(fichier)
-	
-	
-	
-	
-	
+
+
+
+
+
 ########################################################################################################################
 ###	Extract the information about the bed file
 ########################################################################################################################
 def ExtractExperimentInfos(listeFichier, pathVisualDATA, progressChipSeq, newWindow, chunkSize) :
-	
+
 	url = 'https://www.encodeproject.org/files/'+ listeFichier + '/?format=json'
 	# GET the search result
 	response = requests.get(url)
 	# Extract the JSON response as a python dictionary
 	search_results = response.json()
 	jsondata = json.dumps(search_results, indent=8)
-		
+
 	dataset = ''
 	assemblage = ''
 	tissueGeneral = []
@@ -495,7 +495,7 @@ def ExtractExperimentInfos(listeFichier, pathVisualDATA, progressChipSeq, newWin
 		if decoupe[j].find('assembly') != -1 :
 			if decoupe[j].find('\"') != -1 :
 				recoupe = decoupe[j].split("\"")
-				assemblage = recoupe[len(recoupe)-2] 
+				assemblage = recoupe[len(recoupe)-2]
 		if decoupe[j].find('dataset') != -1 :
 			if decoupe[j].find("\"") != -1 :
 				recoupe = decoupe[j].split("\"")
@@ -513,7 +513,7 @@ def ExtractExperimentInfos(listeFichier, pathVisualDATA, progressChipSeq, newWin
 			gene = recoupe[3]
 		if decoupe[j].find('investigated_as') != -1 :
 			recoupe = decoupe[j+1].split("\"")
-			target = recoupe[1]	
+			target = recoupe[1]
 		if decoupe[j].find('system_slims') != -1 :
 			k = j+1
 			while decoupe[k].find('slims') == -1 and k < len(decoupe)-3:
@@ -545,14 +545,14 @@ def ExtractExperimentInfos(listeFichier, pathVisualDATA, progressChipSeq, newWin
 				else :
 					break
 				k += 1
-			
-	if affirmatif ==  1 :			
+
+	if affirmatif ==  1 :
 		fichierAtelecharger = 'https://www.encodeproject.org/files/' + listeFichier + '/@@download/' + listeFichier + '.bed.gz'
 		# Get and unzip the file
 		decompressFile = Decompress(fichierAtelecharger, pathVisualDATA, listeFichier)
 		# read the file and add the information
 		LectureFichier(pathVisualDATA, decompressFile, assemblage, dataset, developmental, tissueGeneral, organ, cellule, gene, target)
-		
+
 	progressChipSeq.step(1 / chunkSize)
 	newWindow.update()
 
