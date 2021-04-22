@@ -20,6 +20,11 @@ from dash.dependencies import Input, Output, State
 from . import Interface_DownloadGenomes
 from . import dash_functions
 from . import ReadInfos_TE
+from . import ReadInfos_GeneOntology
+from . import ReadInfos_WikiPathways
+from . import Create_MainFile
+from . import Create_Color
+from . import Create_CommonDATA
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -35,6 +40,12 @@ def Dash_CreateGenomeDATA():
     global fileGFF
     global GO_basic_file
     global repbase
+    global nbSeq_Assemble
+    global nameOrganism
+    global maxSize
+    global taxon
+    global dictionary_organ
+    global dictionary_tissue
 
     app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
@@ -521,6 +532,34 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    html.Div([
+                            "Finalising files and results"
+
+                    ], id = "final", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-final", style={'margin':'20px'})
+                            ),
+
+                    ], id = "container-final", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
 
 
                 ], id = "", style = {
@@ -845,9 +884,11 @@ def Dash_CreateGenomeDATA():
         Output('main-tabs', 'value'),
         Input('initiatition', 'n_clicks'),
         Input('submit-button', 'n_clicks'),
-        Input("loading-submit-button", "children")
+        Input("loading-submit-button", "children"),
+        Input("main-text", "children"),
+        prevent_initial_call=True
     )
-    def tab_controller(init, submit, submit_wait_loading):
+    def tab_controller(init, submit, submit_wait_loading, initiatition_wait_time):
 
         ctx = dash.callback_context
 
@@ -856,10 +897,10 @@ def Dash_CreateGenomeDATA():
 
         value = None
         if trigger == "initiatition":
-            print(tab_status)
+
             value = tab_status
         elif trigger == "submit-button":
-            print(tab_status)
+
             value = tab_status
 
         return value
@@ -899,8 +940,6 @@ def Dash_CreateGenomeDATA():
 
     def run_process(click):
 
-        repbase = ReadInfos_TE.LireRepbase('Scripts/DATA/Repbase/Data_Repbase.txt')
-
         dash_functions.ReadRepeatMasker(fileTE, repbase, pathVisualDATA)
 
         test = {
@@ -913,5 +952,147 @@ def Dash_CreateGenomeDATA():
         }
 
         return None, test
+
+
+###############################################################################
+    @app.callback(
+        Output('loading-GFF','children'), Output('GFF','style'),
+        Input('loading-TE','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+        global nbSeq_Assemble
+        global nameOrganism
+        global maxSize
+        global taxon
+
+
+        files = os.listdir(pathVisualDATA)
+        for file in files:
+            if ".gff" in file:
+                fileGFF = pathVisualDATA+"/"+file
+
+        nbSeq_Assemble, nameOrganism, maxSize, taxon, dataFrame_Gene = dash_functions.ReadGFF(fileGFF, pathVisualDATA)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'green'
+        }
+
+        return None, test
+
+###############################################################################
+    @app.callback(
+        Output('loading-GO','children'), Output('GO','style'),
+        Input('loading-GFF','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        ReadInfos_GeneOntology.ParsingGeneOntologyDefinition(GO_basic_file, pathVisualDATA, 2)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'green'
+        }
+
+        return None, test
+
+###############################################################################
+    @app.callback(
+        Output('loading-wiki','children'), Output('wiki','style'),
+        Input('loading-GO','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        ReadInfos_WikiPathways.CopyPathWaysFile(pathVisualDATA)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'green'
+        }
+
+        return None, test
+
+
+###############################################################################
+    @app.callback(
+        Output('loading-CHIP','children'), Output('CHIP','style'),
+        Input('loading-wiki','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+        global dictionary_organ
+        global dictionary_tissue
+
+
+        if CHIP_files is not None:
+            dictionary_organ, dictionary_tissue = dash_functions.TransformChipSEQ(pathVisualDATA, CHIP_files)
+        else:
+            dictionary_organ, dictionary_tissue = dash_functions.TransformChipSEQ(pathVisualDATA, pathVisualDATA2)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'green'
+        }
+
+        return None, test
+
+
+###############################################################################
+    @app.callback(
+        Output('loading-final','children'), Output('final','style'),
+        Input('loading-CHIP','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        files = os.listdir(pathVisualDATA)
+        for file in files:
+            if ".fna" in file:
+                fileFNA = pathVisualDATA+"/"+file
+
+        Create_MainFile.EcrireApp(pathVisual)
+
+        if not os.path.exists(pathVisual+"/"+"Functions"):
+            os.mkdir(pathVisual+"/"+"Functions")
+
+        Create_Color.PrepareListeColor(pathVisual)
+        Create_CommonDATA.PrepareCommonDATA(pathVisual, nameOrganism, nbSeq_Assemble, maxSize, taxon, fileFNA, dictionary_organ, dictionary_tissue)
+
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'green'
+        }
+
+        return None, test
+
 
     app.run_server(debug=True)

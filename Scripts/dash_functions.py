@@ -6,6 +6,7 @@ import base64
 import requests, json
 import pandas as pd
 from . import ReadInfos_CHIPSeq
+from . import ReadInfos_NCBIAnnotations
 
 def online_download(url, saving_path):
 
@@ -263,3 +264,370 @@ def ReadRepeatMasker(fileTE, Repbase, pathVisualDATA):
 	tempFile = pathVisualDATA + '/DATA_TE_forDash.txt'
 	dataFrame_For_Dash.to_csv(tempFile, index = False) # relative position
 	os.remove(fileTE)
+
+
+def ReadGFF(AnnotationFile, pathVisualDATA):
+
+	# general information about genome and chromosome
+	maxSize = 0
+	oldURL = ''
+	idNCBI = ''
+	chrNumber = ''
+	taxon = ''
+	organism = []
+	sizeChromosome = []
+	listID = []
+
+	# information about the pseudogene
+	InfosPseudoGene = [[]]
+	InfosPseudoGeneExon = [[]]
+	# information about the gene
+	InfosGene = [[]]
+	InfosGeneExon = [[]]
+	# information about the ncRNA
+	Infos_ncRNA =[[]]
+	# information about regulator motif
+	InfosRegulator = [[]]
+
+
+
+	# read the annotation file
+	file = open(AnnotationFile, "r")
+	lignes = file.readlines()
+	file.close()
+
+	previous_ncRNA = 0
+	finLastObject = 0
+	typeLastObject = ''
+
+	for ij in range(0, len(lignes), 1) :
+
+
+		# here it is not a annotation
+		if lignes[ij][0] != '#' :
+			Colonne = lignes[ij].split('\t')
+			# Split the lignes[ij] is different categories :
+
+			# Here I found the annotation for the chromosome
+			if Colonne[2] == 'region' :
+
+				size, tax, chrNumber, idNCBI = ReadInfos_NCBIAnnotations.LireChromosome(Colonne)
+				sizeChromosome.append(size)
+				listID.append(idNCBI)
+				taxon = tax
+				if maxSize < size :
+					maxSize	= size
+
+
+
+			# Here I found a pseudogene, it can contain exons...
+			elif Colonne[2] == 'pseudogene' :
+				posDEB, posFIN, Orient, ID, Name = ReadInfos_NCBIAnnotations.LirePseudogene(Colonne)
+				tList = [chrNumber, idNCBI, posDEB, posFIN, Orient, ID, Name]
+				InfosPseudoGene.append(tList)
+				typeLastObject = 'pseudogene'
+				finLastObject = int(posFIN)
+
+
+			# Here I found a gene, it can contain exons...
+			elif Colonne[2] == 'gene' :
+				posDEB, posFIN, orient, typeObj, iDName, geneName, product = ReadInfos_NCBIAnnotations.lireGene(Colonne)
+				if typeObj == 'protein_coding' :
+					tList = [chrNumber, idNCBI, posDEB, posFIN, orient, typeObj, iDName, geneName, product]
+					InfosGene.append(tList)
+					typeLastObject = 'gene'
+					finLastObject = int(posFIN)
+				else :
+					tList = [chrNumber, idNCBI, posDEB, posFIN, orient, typeObj, iDName, geneName, product]
+					Infos_ncRNA.append(tList)
+					typeLastObject = 'ncRNA'
+					finLastObject = int(posFIN)
+
+
+			## Here I found an exon, but it can belongs to many biological kind
+			elif Colonne[2] == 'exon' :
+				# Here Exon belongs to pseudogene
+				if typeLastObject == 'pseudogene' and finLastObject >= int(Colonne[4]) :
+					posDEB, posFIN, IDExon = ReadInfos_NCBIAnnotations.LirePseudoExon(Colonne)
+					tList = [chrNumber, idNCBI, posDEB, posFIN, IDExon]
+					InfosPseudoGeneExon.append(tList)
+
+				if typeLastObject == 'gene' and finLastObject >= int(Colonne[4]) :
+					posDEB, posFIN, IDExon = ReadInfos_NCBIAnnotations.LireExon(Colonne)
+					tList = [chrNumber, idNCBI, posDEB, posFIN, IDExon]
+					InfosGeneExon.append(tList)
+
+
+			# Here I found a strang ncRNA...
+			elif(Colonne[2] == 'lnc_RNA' or Colonne[2] == 'snoRNA' or Colonne[2] == 'snRNA' or Colonne[2] == 'miRNA' or Colonne[2] == 'tRNA'
+			  or Colonne[2] == 'rRNA' or Colonne[2] == 'scRNA' or Colonne[2] == 'guide_RNA') :
+				if previous_ncRNA < int(Colonne[3]) :
+					posDEB, posFIN, iDName, geneName, orient, typeObject, product = ReadInfos_NCBIAnnotations.lireMiscRNA(Colonne)
+					tList = [chrNumber, idNCBI, posDEB, posFIN, orient, typeObject, iDName, geneName, product]
+					Infos_ncRNA.append(tList)
+					typeLastObject = 'ncRNA'
+					finLastObject = int(posFIN)
+					previous_ncRNA = int(posDEB)
+
+
+			# Here many useless annotation
+			elif(Colonne[2] == 'CDS' or Colonne[2] == 'mRNA' or Colonne[2] == 'cDNA_match' or Colonne[2] == 'match'
+			  or Colonne[2] == 'transcript' or Colonne[2] == 'primary_transcript' or Colonne[2] == 'sequence_feature'
+			  or Colonne[2] == 'conserved_region' or Colonne[2] == 'sequence_alteration'  or Colonne[2] == 'origin_of_replication'
+			  or Colonne[2] == 'C_gene_segment' or Colonne[2] == 'J_gene_segment' or Colonne[2] == 'V_gene_segment' or Colonne[2] == 'D_gene_segment'
+			  or Colonne[2] == 'mobile_genetic_element' or Colonne[2] == 'nucleotide_motif') :
+				print('',end='')
+
+
+			# Here found regulator sequence
+			elif(Colonne[2] == 'enhancer' or Colonne[2] == 'biological_region' or Colonne[2] == 'protein_binding_site' or Colonne[2] == 'promoter'
+			  or Colonne[2] == 'transcriptional_cis_regulatory_region' or Colonne[2] == 'matrix_attachment_site'
+			  or Colonne[2] == 'DNAseI_hypersensitive_site' or Colonne[2] == 'locus_control_region' or Colonne[2] == 'TATA_box'
+			  or Colonne[2] == 'silencer' or Colonne[2] == 'enhancer_blocking_element' or Colonne[2] == 'response_element' or Colonne[2] == 'CAAT_signal'):
+				posDEB, posFIN, Orient, ID, Class, Name, Function = ReadInfos_NCBIAnnotations.lireRegulatory(Colonne)
+				tList = [chrNumber, idNCBI, posDEB, posFIN, Orient, ID, Class, Name, Function]
+				InfosRegulator.append(tList)
+
+
+			# Here many useless annotation
+			else :
+				print('',end='')
+
+		else:
+			if lignes[ij].find("Taxonomy") != -1 :
+				decoupe = lignes[ij].split(" ")
+				oldURL = decoupe[1][:-1]
+
+
+	########################################################################################################################
+	# read the html file with the official name of the genome
+	organism = ReadInfos_NCBIAnnotations.LireOfficialName(oldURL)
+	nbSeq_Assemble, nameOrganism, InfosOrganism = ReadInfos_NCBIAnnotations.prepareInfosOrganism(organism, sizeChromosome, listID)
+
+	# get the dataframe
+	list1 = [x for x in InfosGene if x != []]
+	dataFrame_Gene           = pd.DataFrame(list1, columns=['Chr Name', 'Chr ID', 'Start', 'End', 'Sens', 'Type', 'ID', 'Gene Name', 'Function'] )
+	list2 = [x for x in InfosGeneExon if x != []]
+	dataFrame_GeneExon       = pd.DataFrame(list2, columns=['Chr Name', 'Chr ID', 'Start', 'End', 'geneID'] )
+	list3 = [x for x in InfosPseudoGene if x != []]
+	dataFrame_PseudoGene     = pd.DataFrame(list3, columns=['Chr Name', 'Chr ID', 'Start', 'End', 'Sens', 'ID', 'Pseudo Name'] )
+	list4 = [x for x in InfosPseudoGeneExon if x != []]
+	dataFrame_PseudoGeneExon = pd.DataFrame(list4, columns=['Chr Name', 'Chr ID', 'Start', 'End', 'ID'] )
+	list5 = [x for x in Infos_ncRNA if x != []]
+	dataFrame_ncRNA          = pd.DataFrame(list5, columns=['Chr Name', 'Chr ID', 'Start', 'End', 'Sens', 'Type', 'ID', 'ncRNA Name', 'Function'] )
+	list6 = [x for x in InfosRegulator if x != []]
+	dataFrame_Regulator      = pd.DataFrame(list6, columns=['Chr Name', 'Chr ID', 'Start', 'End', 'Sens', 'ID', 'Type', 'Regulator Name', 'Function'] )
+	list7 = [x for x in InfosOrganism if x != []]
+	dataFrame_Organism       = pd.DataFrame(list7, columns=['Name', 'NameID', 'RefSeq', 'Size Mb', 'Size bp', 'GC%', 'nb Protein', 'nb Gene', 'nb Pseudo', 'nb ncRNA'] )
+
+	ReadInfos_NCBIAnnotations.PrepareGenomeFileForDash(pathVisualDATA, AnnotationFile, dataFrame_Organism, dataFrame_Gene, dataFrame_GeneExon, dataFrame_PseudoGene, dataFrame_PseudoGeneExon, dataFrame_ncRNA, dataFrame_Regulator)
+
+	return nbSeq_Assemble, nameOrganism, maxSize, taxon, dataFrame_Gene
+
+
+
+def TransformChipSEQ(pathVisualDATA, pathVisualDATA2) :
+
+	CompteFichier = 0
+	for nomFichier in os.listdir(pathVisualDATA2):
+		if(os.path.isdir(nomFichier) != True):
+			CompteFichier += 1
+
+	# Create a dictionnary for the CHipSEQ
+	dicoChipSEQ = {}
+	cle = "All\tTissue\tAll"
+	dicoChipSEQ[cle] = 0
+	cle = "All\tOrgan\tAll"
+	dicoChipSEQ[cle] = 0
+
+	dictionnaire_ficher = {}
+	recompte = 0
+	for nomFichier in os.listdir(pathVisualDATA2):
+		if(os.path.isdir(nomFichier) != True):
+
+			nomFichier2 = pathVisualDATA2 + '/' + nomFichier
+			f = open(nomFichier2, "r")
+			lignes = f.readlines()
+			f.close()
+			decoupe = nomFichier.split('_____')
+			decoupe[2] = decoupe[2][:-4]
+			decoupe[1] = decoupe[1].upper()
+			decoupe[2] = decoupe[2].upper()
+			# remove the cell word
+			if decoupe[1][-4:] == '_CELL' :
+				decoupe[1] = decoupe[1][:-4]
+			if decoupe[2][-4:] == '_CELL' :
+				decoupe[2] = decoupe[2][:-4]
+
+
+			recompte += 1
+
+			for i in range(1, len(lignes), 1) :
+				lignes[i] = lignes[i].rstrip()
+				coupe = lignes[i].split(',')
+				coupe.append(decoupe[1])
+				coupe.append(decoupe[2])
+				coupe.append(decoupe[0])
+
+				indice = round(int(coupe[1]) / 50000000)
+				if coupe[0] in dictionnaire_ficher.keys() :
+					if dictionnaire_ficher[coupe[0]] < indice :
+						dictionnaire_ficher[coupe[0]] = indice
+				else :
+					dictionnaire_ficher[coupe[0]] = indice
+
+				fname = pathVisualDATA2 + '/' + coupe[0] + "___part" + str(indice) + ".txt"
+				if os.path.isfile(fname) :
+					out_file = open(fname, 'a')
+					out_file.write(coupe[0])
+					for i in range(1, len(coupe), 1) :
+						out_file.write('\t' + coupe[i])
+					out_file.write('\n')
+					out_file.close()
+				else :
+					out_file = open(fname, 'w')
+					out_file.write(coupe[0])
+					for i in range(1, len(coupe), 1) :
+						out_file.write('\t' + coupe[i])
+					out_file.write('\n')
+					out_file.close()
+
+				# Fill the dictionnary for the CHipSEQ
+				decoupeTissue = decoupe[1].split('__')
+				for i in range(0, len(decoupeTissue), 1) :
+					cle = coupe[0] + "\tTissue\t" + decoupeTissue[i]
+					if cle in dicoChipSEQ.keys():
+						dicoChipSEQ[cle] += 1
+					else :
+						dicoChipSEQ[cle] = 1
+					cle = "All\tTissue\t" + decoupeTissue[i]
+					if cle in dicoChipSEQ.keys():
+						dicoChipSEQ[cle] += 1
+					else :
+						dicoChipSEQ[cle] = 1
+					cle = coupe[0] + "\tTissue\tAll"
+					if cle in dicoChipSEQ.keys():
+						dicoChipSEQ[cle] += 1
+					else :
+						dicoChipSEQ[cle] = 1
+					cle = "All\tTissue\tAll"
+					dicoChipSEQ[cle] += 1
+				decoupeOrgan  = decoupe[2].split('__')
+				for i in range(0, len(decoupeOrgan), 1) :
+					cle = coupe[0] + "\tOrgan\t" + decoupeOrgan[i]
+					if cle in dicoChipSEQ.keys():
+						dicoChipSEQ[cle] += 1
+					else :
+						dicoChipSEQ[cle] = 1
+					cle = coupe[0] + "\tOrgan\tAll"
+					if cle in dicoChipSEQ.keys():
+						dicoChipSEQ[cle] += 1
+					else :
+						dicoChipSEQ[cle] = 1
+					cle = "All\tOrgan\t" + decoupeOrgan[i]
+					if cle in dicoChipSEQ.keys():
+						dicoChipSEQ[cle] += 1
+					else :
+						dicoChipSEQ[cle] = 1
+					cle = "All\tOrgan\tAll"
+					dicoChipSEQ[cle] += 1
+
+			os.remove(nomFichier2)
+
+
+
+	########################################################################################################################
+	# Create the first version of the table of CHipSEQ
+	dicoLigne = {}
+	dicoColonne = {}
+	for x in dicoChipSEQ :
+		coupe = x.split('\t')
+		dicoColonne[coupe[0]] = 1
+		cle = coupe[1] + '\t' + coupe[2]
+		dicoLigne[cle] = 1
+
+	temp = pathVisualDATA + '/TableChipSeq.txt'
+	f = open(temp, "a")
+	f.write(' \t \t')
+	for x in dicoColonne :
+		f.write(x + '\t')
+	f.write('\n')
+	for y in dicoLigne :
+		f.write(y +  '\t')
+		for x in dicoColonne :
+			cle = x + '\t' + y
+			if cle in dicoChipSEQ.keys():
+				f.write(str(dicoChipSEQ[cle]) + '\t')
+			else :
+				f.write('0' + '\t')
+		f.write('\n')
+	f.write('\n')
+	f.close()
+
+	# Here I will fill the dictionnary for the CommonData files
+	dictionary_organ = {}
+	dictionary_tissue = {}
+	for y in dicoLigne :
+		coupe = y.split('\t')
+		if coupe[0] == 'Tissue' :
+			dictionary_tissue[coupe[1]] = 1
+		else :
+			dictionary_organ[coupe[1]] = 1
+
+
+
+
+
+	########################################################################################################################
+	# transform ChipSEQ files into dataframe and Merge them into one file
+	CompteFichier = 0
+	for nomFichier in os.listdir(pathVisualDATA2):
+		if(os.path.isdir(nomFichier) != True) :
+			CompteFichier += 1
+
+	recompte = 0
+	for nomFichier in os.listdir(pathVisualDATA2):
+		if(os.path.isdir(nomFichier) != True) :
+			nomFichier2 = pathVisualDATA2 + '/' + nomFichier
+			f = open(nomFichier2, "r")
+			lignes = f.readlines()
+			f.close()
+
+			fichierBED = nomFichier2 + '.bed'
+			futurDataframe = []
+			for x in range(0, len(lignes), 1) :
+				lignes[x] = lignes[x].rstrip()
+				coupe = lignes[x].split('\t')
+				futurDataframe.append(coupe)
+			dataFrame_For_Dash = pd.DataFrame(futurDataframe, columns = ['Chr ID', 'Start', 'End', 'Orientation', 'Score', 'Gene', 'Type', 'Tissue', 'Organ', 'ChipSeq Name'])
+			dataFrame_For_Dash.Start = pd.to_numeric(dataFrame_For_Dash.Start, errors='coerce')
+			dataFrame_For_Dash.End = pd.to_numeric(dataFrame_For_Dash.End, errors='coerce')
+			sortedDF = dataFrame_For_Dash.sort_values(by=['Start', 'End'], ascending=True)
+			sortedDF.to_csv(fichierBED, index = False) # relative position
+
+			recompte += 1
+
+			os.remove(nomFichier2)
+
+	for x in dictionnaire_ficher :
+		for y in range(0, dictionnaire_ficher[x]+1, 1) :
+			nomAtrouver = x + "___part" + str(y) + ".txt.bed"
+			for nomFichier in os.listdir(pathVisualDATA2):
+				if(os.path.isdir(nomFichier) != True) :
+					#print(nomAtrouver, ' <> ', nomFichier)
+					if nomAtrouver == nomFichier :
+						nomFichier2 = pathVisualDATA2 + '/' + nomFichier
+						f = open(nomFichier2, "r")
+						lignes = f.readlines()
+						f.close()
+						mergeFichier = pathVisualDATA2 + '/' + x + '.bed'
+						f = open(mergeFichier, "a")
+						start = 1
+						if y == 0 :
+							start = 0
+						for i in range(start, len(lignes), 1) :
+							f.write(lignes[i])
+						f.close()
+						os.remove(nomFichier2)
+
+	return dictionary_organ, dictionary_tissue
