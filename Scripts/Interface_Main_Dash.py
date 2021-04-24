@@ -35,6 +35,7 @@ def Dash_CreateGenomeDATA():
     global pathVisualDATA
     global pathVisualDATA2
     global tab_status
+    global enabling
     global fileTE
     global fileFNA
     global fileGFF
@@ -569,17 +570,14 @@ def Dash_CreateGenomeDATA():
                     })
             ]),
 
-            dcc.Tab(label='TE Selection', disabled = True,children=[
+            dcc.Tab(label='TE Selection', id = "tab-TE-selection", value = "TE-selection",disabled = True,children=[
 
             ]),
 
-            dcc.Tab(label='Data and TE merge Processing', disabled = True, children=[
+            dcc.Tab(label='TE Processing', id = "tab-TE-processing", value = "TE-processing",disabled = True, children=[
 
             ]),
 
-            dcc.Tab(label='Visualization', disabled = True, children=[
-
-            ]),
         ],id = "main-tabs", style = {'display': 'none'}),
     ])
 
@@ -598,6 +596,7 @@ def Dash_CreateGenomeDATA():
         global pathVisualDATA
         global pathVisualDATA2
         global tab_status
+        global enabling
 
 
         if click and GenomeName is not None and TEmethod is not None:
@@ -639,10 +638,22 @@ def Dash_CreateGenomeDATA():
 
             main_tabs = {'display': 'block'}
 
-            print("there1")
-            tab_status = "data-loading"
+            files_downloaded = os.listdir(pathVisualDATA)
 
-            return genome_name_entry, genome_name_entry, init_button, main_text, main_text_style, style, hr, main_tabs
+            if ".DS_Store" in files_downloaded:
+                files_downloaded.remove(".DS_Store")
+
+            print(len(files_downloaded))
+            if len(files_downloaded) == 15:
+                print("there1")
+                enabling = "tab-TE-selection"
+                tab_status = "TE-selection"
+                return genome_name_entry, genome_name_entry, init_button, main_text, main_text_style, style, hr, main_tabs
+            else:
+                print("there2")
+                enabling = "tab-data-loading"
+                tab_status = "data-loading"
+                return genome_name_entry, genome_name_entry, init_button, main_text, main_text_style, style, hr, main_tabs
         else:
             style = {
                 'float':'left',
@@ -652,9 +663,9 @@ def Dash_CreateGenomeDATA():
 
                 }
             print("there2")
+            enabling = "tab-data-loading"
             tab_status = "data-loading"
             return {'display': 'inline', 'width': '20%'}, {'display': 'inline', 'width': '20%','margin' : '20px'}, {'display': 'inline'}, "Enter your genome name and method name" , None, style, None, {'display': 'none'}
-
 
 #############################################################################
 
@@ -763,11 +774,12 @@ def Dash_CreateGenomeDATA():
         )
 
     def download_GO(click):
+        global GO_basic_file
 
         if click:
-            temp = pathVisualDATA + '/go-basic.obo'
+            GO_basic_file = pathVisualDATA + '/go-basic.obo'
             url = 'http://purl.obolibrary.org/obo/go/go-basic.obo'
-            dash_functions.online_download(url, temp)
+            dash_functions.online_download(url, GO_basic_file)
 
             return "Downloaded all necessary GO files", None
         else:
@@ -797,11 +809,14 @@ def Dash_CreateGenomeDATA():
         )
 
     def download_genome_CHIP_SEQ(submit, GenomeName, GenomeNameMain, TEmethod):
+        global CHIP_files
 
         if GenomeName is None:
             return None, None
         try:
             dash_functions.downloadENCODE(GenomeName, pathVisualDATA2)
+
+            CHIP_files = pathVisualDATA2
 
             return "Downloaded {} CHIP-Seq files".format(GenomeName), None
         except Exception as e:
@@ -809,7 +824,7 @@ def Dash_CreateGenomeDATA():
             return "Couldn't find {} CHIP-Seq files".format(GenomeName), None
 
 #############################################################################
-    @app.callback(Output("submit-prompt", "children"), Output("submit-prompt", "style"), Output("tab-data-processing", "disabled"),Output("tab-data-loading", "disabled"), Output("loading-submit-button", "children"),
+    @app.callback(Output("submit-prompt", "children"), Output("submit-prompt", "style"), Output("loading-submit-button", "children"),
         Input("submit-button", "n_clicks"),
         prevent_initial_call=True
         )
@@ -818,6 +833,7 @@ def Dash_CreateGenomeDATA():
         global GO_basic_file
         global CHIP_files
         global tab_status
+        global enabling
 
         if click:
             upload_folder = "Dash_upload/"
@@ -829,9 +845,10 @@ def Dash_CreateGenomeDATA():
             if ".DS_Store" in files:
                 files.remove(".DS_Store")
 
-            if len(files) > 1:
+            if len(files) >= 1:
 
                 for file in files:
+                    print(file)
 
                     if ".zip" in file:
 
@@ -861,27 +878,33 @@ def Dash_CreateGenomeDATA():
                 print("here1")
 
                 tab_status = "data-processing"
+                enabling= "tab-data-processing"
 
-                return None, {'display' : 'none'}, False, True,None
+                return None, {'display' : 'none'},None
 
             else:
                 print("here2")
 
                 tab_status = "data-loading"
+                enabling = "tab-data-loading"
 
-                return "Please control your files", {'width': '30%', 'margin' : '10px 35%', 'display' : 'block', 'textAlign': 'center'},True, False,None
+                return "Please control your files", {'width': '30%', 'margin' : '10px 35%', 'display' : 'block', 'textAlign': 'center'},None
 
         else:
             print("here3")
 
             tab_status = "data-loading"
-
-            return None, {'display' : 'none'}, True, False,None
+            enabling = "tab-data-loading"
+            return None, {'display' : 'none'},None
 
 ###############################################################################
 
     @app.callback(
         Output('main-tabs', 'value'),
+        Output("tab-data-processing", "disabled"),
+        Output("tab-data-loading", "disabled"),
+        Output("tab-TE-selection", "disabled"),
+        Output("tab-TE-processing", "disabled"),
         Input('initiatition', 'n_clicks'),
         Input('submit-button', 'n_clicks'),
         Input("loading-submit-button", "children"),
@@ -890,20 +913,25 @@ def Dash_CreateGenomeDATA():
     )
     def tab_controller(init, submit, submit_wait_loading, initiatition_wait_time):
 
-        ctx = dash.callback_context
+        tab_data_processing = True
+        tab_data_loading = True
+        tab_TE_selection = True
+        tab_TE_processing = True
 
-        trigger = ctx.triggered[0]["prop_id"].split(".")[0]
-        print(trigger)
+        if enabling == "tab-data-processing":
+            tab_data_processing = False
 
-        value = None
-        if trigger == "initiatition":
+        if enabling == "tab-data-loading":
+            tab_data_loading = False
 
-            value = tab_status
-        elif trigger == "submit-button":
+        if enabling == "tab-TE-selection":
+            tab_TE_selection = False
 
-            value = tab_status
+        if enabling == "tab-TE-processing":
+            tab_TE_processing = False
 
-        return value
+        return tab_status, tab_data_processing, tab_data_loading, tab_TE_selection, tab_TE_processing
+
 
 ###############################################################################
 
@@ -926,8 +954,6 @@ def Dash_CreateGenomeDATA():
         'margin' : '2% 0px',
         'background-color':'green'
         }
-
-
 
         return None, test
 
@@ -1042,11 +1068,7 @@ def Dash_CreateGenomeDATA():
         global dictionary_organ
         global dictionary_tissue
 
-
-        if CHIP_files is not None:
-            dictionary_organ, dictionary_tissue = dash_functions.TransformChipSEQ(pathVisualDATA, CHIP_files)
-        else:
-            dictionary_organ, dictionary_tissue = dash_functions.TransformChipSEQ(pathVisualDATA, pathVisualDATA2)
+        dictionary_organ, dictionary_tissue = dash_functions.TransformChipSEQ(pathVisualDATA, CHIP_files)
 
         test = {
         'width': '80%',
