@@ -1145,6 +1145,34 @@ def Dash_CreateGenomeDATA():
                     }),
 
                     html.Div([
+                            "Creating TE environment "
+
+                    ], id = "TE-env", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TE-env", style={'margin':'20px'})
+                            ),
+
+                    ], id = "container-TE-env", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
                             "Creating summary table"
 
                     ], id = "summary", style = {
@@ -1724,6 +1752,8 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        global enabling
+        global tab_status
 
         files = os.listdir(pathVisualDATA)
         for file in files:
@@ -1738,6 +1768,8 @@ def Dash_CreateGenomeDATA():
         Create_Color.PrepareListeColor(pathVisual)
         Create_CommonDATA.PrepareCommonDATA(pathVisual, nameOrganism, nbSeq_Assemble, maxSize, taxon, fileFNA, dictionary_organ, dictionary_tissue)
 
+        enabling = "tab-TE-selection"
+        tab_status = "TE-selection"
 
         test = {
         'width': '80%',
@@ -1849,6 +1881,8 @@ def Dash_CreateGenomeDATA():
 
             res = "Selected : " +"".join([TE+' | ' for TE in list_selection_TE])
             return dict_dash_TE, res
+        else:
+            return None, None
 
 ###############################################################################
     @app.callback(
@@ -2231,6 +2265,100 @@ def Dash_CreateGenomeDATA():
     def run_process(click):
 
         MakeFunction_NeighboringGeneFunctions.NeighboringGeneFunctions(pathVisual, pathVisualNEW, nbSeq_Assemble, numberTE)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TE-TFBS','children'), Output('TE-TFBS','style'),
+        Input('loading-TE-genic-func','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        MakeFunction_OverlappingTFBS.OverlappingTFBS(pathVisualNEW, nbSeq_Assemble, numberTE)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TE-sim-occ-func','children'), Output('TE-sim-occ-func','style'),
+        Input('loading-TE-TFBS','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        MakeFunction_SimilarityOccurrences.SimilarityOccurrences(pathVisualNEW, nbSeq_Assemble, numberTE)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TE-env','children'), Output('TE-env','style'),
+        Input('loading-TE-sim-occ-func','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        MakeFunction_TEEnvironment.TEEnvironment(pathVisualNEW, nbSeq_Assemble, numberTE)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-summary','children'), Output('summary','style'),
+        Input('loading-TE-env','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        MakeFunction_SummaryTable.SummaryTable(pathVisualNEW, nbSeq_Assemble, numberTE)
 
         test = {
         'width': '80%',
