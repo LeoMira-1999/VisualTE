@@ -631,3 +631,36 @@ def TransformChipSEQ(pathVisualDATA, pathVisualDATA2) :
 						os.remove(nomFichier2)
 
 	return dictionary_organ, dictionary_tissue
+
+
+
+
+
+def getListeTE(DATAListTE) :
+
+	dict_dash_TE = []
+	ListeCompleteTE = []
+	ListeFamilleTE = []
+	ListeSuperFamilyTE = []
+
+	# read the annotation file
+	file = open(DATAListTE, "r")
+	lignes = file.readlines()
+	file.close()
+
+	for i in range(1, len(lignes), 1) :
+		lignes[i] = lignes[i][:-1]
+		decoupe = lignes[i].split(',')
+		ListeCompleteTE.append(decoupe[0] + '\t\t' + decoupe[1])
+	ListeCompleteTE.sort()
+	for i in range(0, len(ListeCompleteTE), 1) :
+		decoupe = ListeCompleteTE[i].split('\t\t')
+		nbEspace = 20 - len(decoupe[0])
+		ListeCompleteTE[i] = decoupe[0] + nbEspace * ' ' + decoupe[1]
+		ListeFamilleTE.append(decoupe[0])
+		ListeSuperFamilyTE.append(decoupe[1])
+
+	for TE in ListeCompleteTE:
+		dict_dash_TE.append({"label":TE,"value":TE})
+
+	return ListeCompleteTE, ListeFamilleTE, ListeSuperFamilyTE, dict_dash_TE

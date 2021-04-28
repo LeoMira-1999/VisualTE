@@ -7,6 +7,8 @@ import os.path
 import base64
 import requests, json
 import shutil
+import importlib
+import importlib.util
 import time
 import dash
 import zipfile
@@ -25,6 +27,25 @@ from . import ReadInfos_WikiPathways
 from . import Create_MainFile
 from . import Create_Color
 from . import Create_CommonDATA
+
+from . import Create_CommonDATA2
+from . import Create_MainFile
+from . import Create_SelectedAnnotations
+from . import Create_Random_Sequences
+from . import Create_Overlap_TFBS
+from . import Create_Alignment_and_Tree
+
+from . import MakeFunction_GenomeBrowser
+from . import MakeFunction_ChromosomeDistribution
+from . import MakeFunction_GeneralFeaturesDistribution
+from . import MakeFunction_SimilarityOccurrences
+from . import MakeFunction_TEEnvironment
+from . import MakeFunction_DistanceNeighboringGene
+from . import MakeFunction_NeighboringGeneFunctions
+from . import MakeFunction_OverlappingTFBS
+from . import MakeFunction_SummaryTable
+
+
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -47,6 +68,38 @@ def Dash_CreateGenomeDATA():
     global taxon
     global dictionary_organ
     global dictionary_tissue
+    global dataTE
+    global pathVisualNEW
+    global pathVisualFunctions
+    global ListeCompleteTE
+    global ListeFamilleTE
+    global ListeSuperFamilyTE
+    global list_selection_TE
+    global indexTE
+    global numberOFselection
+    global ListeConsensus
+    global moduleSelectTE
+    global moduleCommonDATA
+    global NameSeq
+    global DEB
+    global FIN
+    global Sens
+    global Size
+    global Similarity
+    global listGeneSelect5
+    global listGeneSelect3
+    global listGeneSelectInside
+    global randomSeqDEB
+    global randomSeqFIN
+    global randomSeqCHR
+    global tissue_dictionary_SelectedTE
+    global organ_dictionary_SelectedTE
+    global tissue_dictionary_Global
+    global organ_dictionary_Global
+    global tissue_dictionary_RandomSeq
+    global organ_dictionary_RandomSeq
+    global nbSeq_Assemble
+    global numberTE
 
     app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
@@ -78,7 +131,12 @@ def Dash_CreateGenomeDATA():
 
             html.Button('Initiate', id='initiatition', n_clicks=0),
 
-        ]),
+        ], style = {
+            'width': '80%',
+            'margin' : '10px 10%',
+            'display' : 'block',
+            'textAlign': 'center'
+            }),
 
         html.Hr(id = "hr"),
 
@@ -563,18 +621,564 @@ def Dash_CreateGenomeDATA():
 
 
 
-                ], id = "", style = {
+                ], style = {
                     'width': '80%',
                     'margin' : '10px 10%',
                     'display' : 'block',
                     })
             ]),
-
+#########################################################################
             dcc.Tab(label='TE Selection', id = "tab-TE-selection", value = "TE-selection",disabled = True,children=[
 
+                html.Div(children = [
+
+                    html.H6("Select your TE(s) from the dropdown list"),
+                    html.P("Up to 3 families (same superfamily)"),
+
+                    dcc.Dropdown(
+                        id='TE-dropdown',
+                        placeholder = 'Enter your TE(s) name',
+                        style = {'margin':'2% 0% 2% 0%'}
+                    ),
+                    html.Div(id = "TE-selected", style = {'margin':'0% 0% 2% 0%'}),
+                    html.Button('Select TE', id='TE-select-button', n_clicks=0),
+                    html.Div("Merge TE families:", style = {'margin':'2% 0% 0% 0%'}),
+                    dcc.RadioItems(
+                        options=[
+                            {'label': 'Yes', 'value': 'yes'},
+                            {'label': 'No', 'value': 'no'},
+                        ],
+                        id = "radio-TE",
+                        value = "no",
+                        labelStyle={'display': 'inline-block', 'margin':'20px'}
+                    ),
+
+                    html.Button('Submit', id='TE-finish-button', n_clicks=0),
+
+                    dcc.Loading(
+                        type="circle",
+                        children=html.Div(id="loading-TE-selection", style={'margin':'20px'})
+                        ),
+
+                ], style = {
+                    'width': '80%',
+                    'margin' : '10px 10%',
+                    'display' : 'block',
+                    'textAlign': 'center'
+                    })
             ]),
 
+#########################################################################
             dcc.Tab(label='TE Processing', id = "tab-TE-processing", value = "TE-processing",disabled = True, children=[
+
+                html.Div([
+                    html.Div([
+                            "Processing for the selected TE(s) and creating Selected TE File"
+
+                    ], id = "proc-create-TE", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px',
+                        'background-color' : 'none'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-proc-create-TE", style={'margin':'20px'})
+                            ),
+
+
+                    ], id = "container-proc-create-TE", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Loading TE File"
+
+                    ], id = "TE-load", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px',
+                        'background-color' : 'none'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TE-load", style={'margin':'20px'})
+                            ),
+
+
+                    ], id = "container-TE-load", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+                    html.Div([
+                            "Creating Genic Environment File"
+
+                    ], id = "gene-env", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px',
+                        'background-color' : 'none'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-gene-env", style={'margin':'20px'})
+                            ),
+
+
+                    ], id = "container-gene-env", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Creating TE Alignment and Phylogenetic Tree Files"
+
+                    ], id = "TE-align-phylo", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px',
+                        'background-color' : 'none'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TE-align-phylo", style={'margin':'20px'})
+                            ),
+
+
+                    ], id = "container-TE-align-phylo", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Creating Random Sequences and Their Genic Environment"
+
+                    ], id = "random-seq", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px',
+                        'background-color' : 'none'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-random-seq", style={'margin':'20px'})
+                            ),
+
+
+                    ], id = "container-random-seq", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Selecting Overlap TFBS for TE Sequences"
+
+                    ], id = "TFBS-seq", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px',
+                        'background-color' : 'none'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TFBS-seq", style={'margin':'20px'})
+                            ),
+
+
+                    ], id = "container-TFBS-seq", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Selecting Overlap TFBS for Random Sequences"
+
+                    ], id = "TFBS-random", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px',
+                        'background-color' : 'none'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TFBS-random", style={'margin':'20px'})
+                            ),
+
+
+                    ], id = "container-TFBS-random", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Printing Overlap TFBS for TE/Random Sequences"
+
+                    ], id = "TFBS-random-print", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px',
+                        'background-color' : 'none'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TFBS-random-print", style={'margin':'20px'})
+                            ),
+
+
+                    ], id = "container-TFBS-random-print", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Creating Main File (VisualTE3.py)"
+
+                    ], id = "main-file", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px',
+                        'background-color' : 'none'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-main-file", style={'margin':'20px'})
+                            ),
+
+
+                    ], id = "container-main-file", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Creating TE Genome Browser File Function"
+
+                    ], id = "TE-genome-browser", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px',
+                        'background-color' : 'none'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TE-genome-browser", style={'margin':'20px'})
+                            ),
+
+
+                    ], id = "container-TE-genome-browser", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Creating TE Chromosome Distribution File Function"
+
+                    ], id = "TE-chrom-distrib", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px',
+                        'background-color' : 'none'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TE-chrom-distrib", style={'margin':'20px'})
+                            ),
+
+
+                    ], id = "container-TE-chrom-distrib", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Creating TE General Features File Function"
+
+                    ], id = "TE-general", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TE-general", style={'margin':'20px'})
+                            ),
+
+                    ], id = "container-TE-general", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Creating TE Gene Distance file"
+
+                    ], id = "TE-gene-distance", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TE-gene-distance", style={'margin':'20px'})
+                            ),
+
+                    ], id = "container-TE-gene-distance", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+
+                    html.Div([
+                            "Creating TE Genetic Functions File"
+
+                    ], id = "TE-genic-func", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TE-genic-func", style={'margin':'20px'})
+                            ),
+
+                    ], id = "container-TE-genic-func", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+
+                    html.Div([
+                            "Creating TE Overlapping TFBS File Function"
+
+                    ], id = "TE-TFBS", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TE-TFBS", style={'margin':'20px'})
+                            ),
+
+                    ], id = "container-TE-TFBS", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+
+                    html.Div([
+                            "Creating TE Similarity Occurrences File Function"
+
+                    ], id = "TE-sim-occ-func", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-TE-sim-occ-func", style={'margin':'20px'})
+                            ),
+
+                    ], id = "container-TE-sim-occ-func", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+                    html.Div([
+                            "Creating summary table"
+
+                    ], id = "summary", style = {
+                        'width': '80%',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+                    html.Div([
+
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-summary", style={'margin':'20px'})
+                            ),
+
+                    ], id = "container-summary", style = {
+                        'width': '20%',
+                        'textAlign' : 'right',
+                        'font-size' : ' 24px',
+                        'float':'left',
+                        'display' : 'block',
+                        'margin' : '2% 0px'
+
+                    }),
+
+
+
+                ], style = {
+                    'width': '80%',
+                    'margin' : '10px 10%',
+                    'display' : 'block',
+                    })
 
             ]),
 
@@ -615,6 +1219,16 @@ def Dash_CreateGenomeDATA():
 
             if not os.path.exists(pathVisualDATA2):
                 os.mkdir(pathVisualDATA2)
+
+            # Create the (sub) directories for VisualTE3
+            pathVisualCSS = pathVisual + '/css'
+            if not os.path.exists(pathVisualCSS):
+                   os.mkdir(pathVisualCSS)
+
+
+            pathVisualCSS_file = pathVisualCSS + '/dash-wind-streaming.css'
+            if not os.path.exists(pathVisualCSS_file):
+                   shutil.copyfile('Scripts/dash-wind-streaming.css', pathVisualCSS_file)
 
             genome_name_entry = {'display': 'none'}
 
@@ -908,10 +1522,12 @@ def Dash_CreateGenomeDATA():
         Input('initiatition', 'n_clicks'),
         Input('submit-button', 'n_clicks'),
         Input("loading-submit-button", "children"),
+        Input('loading-TE-selection', 'children' ),
         Input("main-text", "children"),
+        Input('loading-final','children'),
         prevent_initial_call=True
     )
-    def tab_controller(init, submit, submit_wait_loading, initiatition_wait_time):
+    def tab_controller(init, submit, submit_wait_loading, TE_loading_wait ,initiatition_wait_time, data_final_wait_time):
 
         tab_data_processing = True
         tab_data_loading = True
@@ -920,14 +1536,26 @@ def Dash_CreateGenomeDATA():
 
         if enabling == "tab-data-processing":
             tab_data_processing = False
+            tab_data_loading = True
+            tab_TE_selection = True
+            tab_TE_processing = True
 
         if enabling == "tab-data-loading":
+            tab_data_processing = True
             tab_data_loading = False
+            tab_TE_selection = True
+            tab_TE_processing = True
 
         if enabling == "tab-TE-selection":
+            tab_data_processing = True
+            tab_data_loading = True
             tab_TE_selection = False
+            tab_TE_processing = True
 
         if enabling == "tab-TE-processing":
+            tab_data_processing = True
+            tab_data_loading = True
+            tab_TE_selection = True
             tab_TE_processing = False
 
         return tab_status, tab_data_processing, tab_data_loading, tab_TE_selection, tab_TE_processing
@@ -952,7 +1580,8 @@ def Dash_CreateGenomeDATA():
         'float':'left',
         'display' : 'block',
         'margin' : '2% 0px',
-        'background-color':'green'
+        'background-color':'#129dff',
+
         }
 
         return None, test
@@ -974,7 +1603,8 @@ def Dash_CreateGenomeDATA():
         'float':'left',
         'display' : 'block',
         'margin' : '2% 0px',
-        'background-color':'green'
+        'background-color':'#129dff',
+
         }
 
         return None, test
@@ -1007,7 +1637,8 @@ def Dash_CreateGenomeDATA():
         'float':'left',
         'display' : 'block',
         'margin' : '2% 0px',
-        'background-color':'green'
+        'background-color':'#129dff',
+
         }
 
         return None, test
@@ -1029,7 +1660,8 @@ def Dash_CreateGenomeDATA():
         'float':'left',
         'display' : 'block',
         'margin' : '2% 0px',
-        'background-color':'green'
+        'background-color':'#129dff',
+
         }
 
         return None, test
@@ -1051,7 +1683,8 @@ def Dash_CreateGenomeDATA():
         'float':'left',
         'display' : 'block',
         'margin' : '2% 0px',
-        'background-color':'green'
+        'background-color':'#129dff',
+
         }
 
         return None, test
@@ -1076,7 +1709,8 @@ def Dash_CreateGenomeDATA():
         'float':'left',
         'display' : 'block',
         'margin' : '2% 0px',
-        'background-color':'green'
+        'background-color':'#129dff',
+
         }
 
         return None, test
@@ -1111,10 +1745,502 @@ def Dash_CreateGenomeDATA():
         'float':'left',
         'display' : 'block',
         'margin' : '2% 0px',
-        'background-color':'green'
+        'background-color':'#129dff',
+
         }
 
         return None, test
 
+###############################################################################
+    @app.callback(
+        Output('TE-dropdown', 'options'),Output('TE-selected', 'children'),
+        Input('loading-final','children'),
+        Input('initiatition', 'n_clicks'),
+        Input("main-text", "children"),
+        Input('TE-select-button', 'n_clicks'),
+        State('TE-dropdown', 'value'),
+        prevent_initial_call=True
+    )
+
+    def begin_TE_selection(loading_final, init_click,main, TE_select_click, value):
+        global dataTE
+        global pathVisualNEW
+        global pathVisualFunctions
+        global ListeCompleteTE
+        global ListeFamilleTE
+        global ListeSuperFamilyTE
+        global list_selection_TE
+        global indexTE
+        global numberOFselection
+
+        ctx = dash.callback_context
+        input_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+        if enabling == "tab-TE-selection" and input_id == "initiatition" or input_id == "loading-final":
+
+            dataTE = pathVisualDATA + '/DATA_List_TE_families.txt'
+
+            folder = "second_half"
+
+            pathVisualNEW = pathVisual + '/' + folder
+            if not os.path.exists(pathVisualNEW):
+                os.mkdir(pathVisualNEW)
+
+            pathVisualFunctions = pathVisualNEW + '/Functions'
+            if not os.path.exists(pathVisualFunctions):
+                os.mkdir(pathVisualFunctions)
+
+            # Copy the app.py file
+            originalFile = pathVisual + '/app.py'
+            copyFile = pathVisualNEW + '/app.py'
+            if not os.path.exists(copyFile):
+                shutil.copyfile(originalFile, copyFile)
+
+            # Copy the CommonDATA file
+            originalFile = pathVisual + '/Functions/CommonDATA.py'
+            copyFile = pathVisualNEW + '/Functions/CommonDATA.py'
+            if not os.path.exists(copyFile):
+                shutil.copyfile(originalFile, copyFile)
+
+            # Copy the Couleur file
+            originalFile = pathVisual + '/Functions/Couleur.py'
+            copyFile = pathVisualNEW + '/Functions/Couleur.py'
+            if not os.path.exists(copyFile):
+                shutil.copyfile(originalFile, copyFile)
+
+            list_selection_TE = []
+            numberOFselection = 0
+
+            ListeCompleteTE, ListeFamilleTE, ListeSuperFamilyTE, dict_dash_TE = dash_functions.getListeTE(dataTE)
+            return dict_dash_TE, None
+
+        elif input_id == "TE-select-button":
+            dict_dash_TE = []
+
+            indexTE = ListeCompleteTE.index(value)
+
+            selectedSuperfamily = ListeSuperFamilyTE[indexTE]
+            selectedFamily = ListeFamilleTE[indexTE] + "\n"
+
+            numberOFselection += 1
+            if numberOFselection == 1 or numberOFselection == 2 :
+                tempC = []
+                tempF = []
+                tempS = []
+                for i in range(0, len(ListeCompleteTE), 1) :
+                    if ListeSuperFamilyTE[i] == selectedSuperfamily and i != indexTE :
+                        tempC.append(ListeCompleteTE[i])
+                        tempF.append(ListeFamilleTE[i])
+                        tempS.append(ListeSuperFamilyTE[i])
+                ListeCompleteTE = tempC
+                ListeFamilleTE = tempF
+                ListeSuperFamilyTE = tempS
+
+            if numberOFselection == 3 :
+                ListeCompleteTE = []
+                ListeFamilleTE = []
+                ListeSuperFamilyTE = []
+
+            if numberOFselection < 4:
+                list_selection_TE.append(selectedFamily[:-1])
+
+            for TE in ListeCompleteTE:
+                dict_dash_TE.append({"label":TE,"value":TE})
+
+            res = "Selected : " +"".join([TE+' | ' for TE in list_selection_TE])
+            return dict_dash_TE, res
+
+###############################################################################
+    @app.callback(
+        Output("loading-TE-selection", "children"),
+        Input('TE-finish-button', 'n_clicks'),
+        prevent_initial_call=True
+    )
+
+    def run_TE_selection(click):
+        global enabling
+        global tab_status
+        enabling = "tab-TE-processing"
+        tab_status = "TE-processing"
+        #HERE WILL BE ERROR MANAGEMENT OF TE SELECTION TAB
+        return None
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-proc-create-TE','children'), Output('proc-create-TE','style'),
+        Input("loading-TE-selection", "children"),
+        State("radio-TE", "value"),
+        prevent_initial_call=True
+    )
+
+    def run_process(click, radio_TE):
+        global ListeConsensus
+
+
+        OfficialName = ''
+        if radio_TE == "yes" and len(list_selection_TE) > 1 :	# Merged the family
+            OfficialName = 'Merged '
+        for i in range(0, len(list_selection_TE), 1) :
+            if i > 0 :
+                OfficialName += ', '
+            OfficialName += str(list_selection_TE[i])
+
+        ListeConsensus = Create_CommonDATA2.writeSelectTE(pathVisual, pathVisualNEW, OfficialName, list_selection_TE)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TE-load','children'), Output('TE-load','style'),
+        Input("loading-proc-create-TE", "children"),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+        global moduleSelectTE
+        global moduleCommonDATA
+
+        # Import the recently created modules
+        pathSelectTE = os.path.realpath(pathVisualNEW + '/Functions/CommonDATA_SelectTEs.py')
+        loaderSelectTE = importlib.util.spec_from_file_location('CommonDATA_SelectTEs', pathSelectTE)
+        moduleSelectTE = importlib.util.module_from_spec(loaderSelectTE)
+        loaderSelectTE.loader.exec_module(moduleSelectTE)
+
+        pathCommonDATA = os.path.realpath(pathVisualNEW + '/Functions/CommonDATA.py')
+        loaderCommonDATA = importlib.util.spec_from_file_location('CommonDATA', pathCommonDATA)
+        moduleCommonDATA = importlib.util.module_from_spec(loaderCommonDATA)
+        loaderCommonDATA.loader.exec_module(moduleCommonDATA)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-gene-env','children'), Output('gene-env','style'),
+        Input('loading-TE-load','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+        global NameSeq
+        global DEB
+        global FIN
+        global Sens
+        global Size
+        global Similarity
+        global listGeneSelect5
+        global listGeneSelect3
+        global listGeneSelectInside
+
+        NameSeq, DEB, FIN, Sens, Size, Similarity, listGeneSelect5, listGeneSelect3, listGeneSelectInside = Create_SelectedAnnotations.SelectAnnotations(pathVisual, pathVisualNEW, moduleSelectTE, moduleCommonDATA, list_selection_TE, ListeConsensus)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TE-align-phylo','children'), Output('TE-align-phylo','style'),
+        Input('loading-gene-env','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+
+        Create_Alignment_and_Tree.AlignETPhylogeny(pathVisual, pathVisualNEW, moduleCommonDATA, moduleSelectTE, NameSeq, DEB, FIN, Sens, Size, Similarity)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-random-seq','children'), Output('random-seq','style'),
+        Input('loading-TE-align-phylo','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+        global randomSeqDEB
+        global randomSeqFIN
+        global randomSeqCHR
+
+        randomSeqDEB, randomSeqFIN, randomSeqCHR = Create_Random_Sequences.RandomSequences(pathVisual, pathVisualNEW, moduleSelectTE, NameSeq, DEB, FIN, list_selection_TE, listGeneSelect5, listGeneSelect3, listGeneSelectInside)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TFBS-seq','children'), Output('TFBS-seq','style'),
+        Input('loading-random-seq','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+        global tissue_dictionary_SelectedTE
+        global organ_dictionary_SelectedTE
+        global tissue_dictionary_Global
+        global organ_dictionary_Global
+
+        tissue_dictionary_SelectedTE, organ_dictionary_SelectedTE, tissue_dictionary_Global, organ_dictionary_Global = Create_Overlap_TFBS.ExtractTFBS_forTE(pathVisual, pathVisualNEW, list_selection_TE, moduleCommonDATA, NameSeq, DEB, FIN, listGeneSelect5, listGeneSelect3)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TFBS-random','children'), Output('TFBS-random','style'),
+        Input('loading-TFBS-seq','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+        global tissue_dictionary_RandomSeq
+        global organ_dictionary_RandomSeq
+        global tissue_dictionary_Global
+        global organ_dictionary_Global
+
+        tissue_dictionary_RandomSeq, organ_dictionary_RandomSeq, tissue_dictionary_Global, organ_dictionary_Global = Create_Overlap_TFBS.ExtractTFBS_forRandom(pathVisual, pathVisualNEW, list_selection_TE, moduleCommonDATA, randomSeqCHR, randomSeqDEB, randomSeqFIN, tissue_dictionary_Global, organ_dictionary_Global)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TFBS-random-print','children'), Output('TFBS-random-print','style'),
+        Input('loading-TFBS-random','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        Create_Overlap_TFBS.PrintGlobalTFBS(pathVisualNEW, list_selection_TE, tissue_dictionary_Global, organ_dictionary_Global, tissue_dictionary_SelectedTE, organ_dictionary_SelectedTE, tissue_dictionary_RandomSeq, organ_dictionary_RandomSeq)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-main-file','children'), Output('main-file','style'),
+        Input('loading-TFBS-random-print','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+        global nbSeq_Assemble
+        global numberTE
+
+        # Create the function for the TE selected
+        # Add few lines in the CommonDATA_SelectTEs file
+        Create_CommonDATA2.AjoutAnnotations(pathVisualNEW)
+        # Cree le fichier principal qui lance tous les autres
+        nbSeq_Assemble, numberTE = Create_MainFile.EcrireVisualTE(pathVisual, pathVisualNEW, moduleSelectTE, moduleCommonDATA)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TE-genome-browser','children'), Output('TE-genome-browser','style'),
+        Input('loading-main-file','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        MakeFunction_GenomeBrowser.GenomeBrowser(pathVisual, pathVisualNEW, nbSeq_Assemble, numberTE)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TE-chrom-distrib','children'), Output('TE-chrom-distrib','style'),
+        Input('loading-TE-genome-browser','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        MakeFunction_ChromosomeDistribution.ChromosomeDistribution(pathVisualNEW, numberTE)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TE-general','children'), Output('TE-general','style'),
+        Input('loading-TE-chrom-distrib','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        MakeFunction_GeneralFeaturesDistribution.GeneralFeatures_layout(pathVisual, pathVisualNEW, numberTE)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TE-gene-distance','children'), Output('TE-gene-distance','style'),
+        Input('loading-TE-general','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        MakeFunction_DistanceNeighboringGene.DistanceNeighboringGene(pathVisual, pathVisualNEW, nbSeq_Assemble, numberTE)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
+
+###############################################################################
+
+    @app.callback(
+        Output('loading-TE-genic-func','children'), Output('TE-genic-func','style'),
+        Input('loading-TE-gene-distance','children'),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+
+        MakeFunction_NeighboringGeneFunctions.NeighboringGeneFunctions(pathVisual, pathVisualNEW, nbSeq_Assemble, numberTE)
+
+        test = {
+        'width': '80%',
+        'font-size' : ' 24px',
+        'float':'left',
+        'display' : 'block',
+        'margin' : '2% 0px',
+        'background-color':'#129dff',
+        }
+
+        return None, test
 
     app.run_server(debug=True)
