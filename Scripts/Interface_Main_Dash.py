@@ -130,12 +130,15 @@ def Dash_CreateGenomeDATA():
     global numberTE
     global res
 
+    #create DB file to store already created launches if not already done
     if not os.path.exists("DB.txt"):
         with open("DB.txt" , "w") as file:
             file.write("")
 
+    #create list to store dropdown genome file names
     genome_dropdown = []
 
+    #read DB file to find any genome file name to store in dropdown
     with open("DB.txt" , "r") as file:
         lines = file.readlines()
         for line in lines:
@@ -164,6 +167,7 @@ def Dash_CreateGenomeDATA():
 
             html.Div([
 
+                #used to select already processed data
                 dcc.Dropdown(
                     id='genome-dropdown',
                     placeholder = 'Enter your genome name',
@@ -172,6 +176,7 @@ def Dash_CreateGenomeDATA():
                     multi = False
                 ),
 
+                #used to select TE that have been done with the genome name
                 dcc.Dropdown(
                     id='TE-dropdown-selector',
                     placeholder = 'Enter your TE name',
@@ -180,24 +185,27 @@ def Dash_CreateGenomeDATA():
                     multi = False
                 ),
 
-                #genome name textbox
-                dcc.Input(
-                  id="genome-name-entry",
-                  type="text",
-                  placeholder="Enter your genome name here",
-                  style={
-                      'width': '20%'
-                  }),
+                html.Div([
+                    #genome name textbox
+                    dcc.Input(
+                      id="genome-name-entry",
+                      type="text",
+                      placeholder="Enter your genome name here",
+                      style={
+                          'width': '20%'
+                      }),
 
-                #method name textbox
-                dcc.Input(
-                  id="method-name-entry",
-                  type="text",
-                  placeholder="Repet or RepeatMasker or Blast",
-                  style={
-                      'width': '21%',
-                      'margin' : '20px'
-                  }),
+                    #method name textbox
+                    dcc.Input(
+                      id="method-name-entry",
+                      type="text",
+                      placeholder="Repet or RepeatMasker or Blast",
+                      style={
+                          'width': '21%',
+                          'margin' : '20px'
+                      }),
+
+                ], id = "inputs-container"),
 
                 #submit button
                 html.Button('Initiate', id='initiation', n_clicks=0),
@@ -1530,8 +1538,10 @@ def Dash_CreateGenomeDATA():
                 tab_status = "data-loading"
                 return selectors, main_text, main_text_style, style, hr, main_tabs
 
+        #if the data comes from the dropdowns
         elif click and GenomeName is None and TEmethod is None:
 
+            #read the DB file and extract the data
             with open("DB.txt", "r") as file:
                 lines = file.readlines()
                 for line in lines:
@@ -1576,7 +1586,7 @@ def Dash_CreateGenomeDATA():
             if not os.path.exists(pathVisualCSS_file):
                    shutil.copyfile('Scripts/dash-wind-streaming.css', pathVisualCSS_file)
 
-
+            #if only the genome dropdown has been selected, go to TE selection tab
             if genome_dropdown is not None and TE_dropdown is None:
 
                 #enable appropriate tab
@@ -1585,6 +1595,7 @@ def Dash_CreateGenomeDATA():
 
                 return selectors, main_text, main_text_style, style, hr, main_tabs
 
+            #if both dropdowns have been selected go to visualisation tab
             elif genome_dropdown is not None and TE_dropdown is not None:
 
                 #enable appropriate tab
@@ -1602,8 +1613,7 @@ def Dash_CreateGenomeDATA():
     @app.callback(
     Output("TE-dropdown-selector", "options"),
     Output("TE-dropdown-selector", "disabled"),
-    Output("genome-name-entry", "disabled"),
-    Output("method-name-entry", "disabled"),
+    Output("inputs-container", "style"),
     Output("genome-dropdown", "disabled"),
     Input("genome-dropdown", "value"),
     Input("genome-name-entry", "value"),
@@ -1611,28 +1621,69 @@ def Dash_CreateGenomeDATA():
     prevent_initial_call=True
     )
     def DB(dropdown_value, GenomeName, MethodName):
+        """
+        Arguments: use the dropdown selected genome value, the genome name and
+                    TE method name
+
+        Description: listen for any of the 3 parameters to change in order to
+                    desable unnecessary fields
+
+        Returns: disable unnecessary fields
+
+        """
+
         #used to differentiate callbacks
         ctx = dash.callback_context
 
         #see which input triggered teh callback
         input_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
+        display_off = {'display': 'none'}
+        display_on = {'display': 'block'}
+
+        #used to store TE data name for TE dropdown
         TE_dropdown_selector = []
+
+        #if the callback was triggered by genome-dropdown
         if input_id == "genome-dropdown":
+
+            #if dropdown value is None than disable TE dropdown and revert changes
+            if dropdown_value is None:
+
+                return no_update, True, display_on, no_update
+
+            #read DB file
             with open("DB.txt" , "r") as file:
                 lines = file.readlines()
                 for line in lines:
+
+                    #Store TE data
                     if dropdown_value in line:
                         TE = line.split("\t")[3]
                         TE_dropdown_selector.append({"label":TE,"value":TE})
-            return TE_dropdown_selector, False, True, True, no_update
 
+            #enable TE dropdown and hide other field inputs
+            return TE_dropdown_selector, False, display_off, no_update
+
+
+        #if the inputs are beeing typed in
         elif input_id == "genome-name-entry" or input_id == "method-name-entry":
-            if MethodName is not None or GenomeName is not None:
-                return no_update, True, False, False, True
 
-        else:
-            return no_update, True, False, False, False
+            if MethodName is not None and GenomeName is not None:
+
+                #desable dropdown if either inputs are not empty
+                if len(MethodName) >= 1 or len(GenomeName) >= 1:
+                    return no_update, True, no_update, True
+
+                #enable dropdown if empty again
+                elif len(MethodName) == 0 or len(GenomeName) == 0:
+                    return no_update, True, no_update, False
+
+            else:
+
+                #default values
+                return no_update, True, display_on, no_update
+
 
 #############################################################################
 
