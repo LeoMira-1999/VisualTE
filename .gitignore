@@ -4,8 +4,9 @@
 # Non coding data
 
 Scripts/DATA/
+__pycache__
 Scripts/__pycache__/
 
-VisualTE3*/
+test
 
-Scripts/_*
+VisualTE3*/

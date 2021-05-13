@@ -56,15 +56,77 @@ def EcrireVisualTE(pathVisual, pathVisualNEW, moduleSelectTE, moduleCommonDATA):
 	f.write("import dash_core_components as dcc\n")
 	f.write("import plotly.graph_objects as go\n")
 	f.write("from dash.dependencies import Input, Output\n\n")
+	f.close()
+	with open(temp, "a") as file:
+		file.write("""
 
-	f.write("# importe 1 fichier par function\n")
-	f.write("from app import app\n")
-	f.write("from Functions import Couleur \n")
-	f.write("from Functions import GenomeBrowser, ChromosomeDistribution, GeneralFeatures, SimilarityOccurrences, TEEnvironment \n")
-	f.write("from Functions import TEGeneDistance, NeighboringGeneFunction, OverlappingTFBS, SummaryTable\n\n\n\n")
+# importe 1 fichier par function
+from app import app
+from Scripts.Interface_Main_Dash import pathVisual#########
+import importlib
+Couleur_raw = pathVisual+"/second_half/Functions/Couleur"####
+
+Couleur_processed = Couleur_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+Couleur = importlib.import_module(Couleur_processed)#####
+
+GenomeBrowser_raw = pathVisual+"/second_half/Functions/GenomeBrowser"####
+
+GenomeBrowser_processed = GenomeBrowser_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+GenomeBrowser = importlib.import_module(GenomeBrowser_processed)#####
+
+ChromosomeDistribution_raw = pathVisual+"/second_half/Functions/ChromosomeDistribution"####
+
+ChromosomeDistribution_processed = ChromosomeDistribution_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+ChromosomeDistribution = importlib.import_module(ChromosomeDistribution_processed)#####
+
+GeneralFeatures_raw = pathVisual+"/second_half/Functions/GeneralFeatures"####
+
+GeneralFeatures_processed = GeneralFeatures_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+GeneralFeatures = importlib.import_module(GeneralFeatures_processed)#####
+
+SimilarityOccurrences_raw = pathVisual+"/second_half/Functions/SimilarityOccurrences"####
+
+SimilarityOccurrences_processed = SimilarityOccurrences_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+SimilarityOccurrences = importlib.import_module(SimilarityOccurrences_processed)#####
+
+TEEnvironment_raw = pathVisual+"/second_half/Functions/TEEnvironment"####
+
+TEEnvironment_processed = TEEnvironment_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+TEEnvironment = importlib.import_module(TEEnvironment_processed)#####
+
+TEGeneDistance_raw = pathVisual+"/second_half/Functions/TEGeneDistance"####
+
+TEGeneDistance_processed = TEGeneDistance_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+TEGeneDistance = importlib.import_module(TEGeneDistance_processed)#####
+
+NeighboringGeneFunction_raw = pathVisual+"/second_half/Functions/NeighboringGeneFunction"####
+
+NeighboringGeneFunction_processed = NeighboringGeneFunction_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+NeighboringGeneFunction = importlib.import_module(NeighboringGeneFunction_processed)#####
+
+OverlappingTFBS_raw = pathVisual+"/second_half/Functions/OverlappingTFBS"####
+
+OverlappingTFBS_processed = OverlappingTFBS_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+OverlappingTFBS = importlib.import_module(OverlappingTFBS_processed)#####
+
+SummaryTable_raw = pathVisual+"/second_half/Functions/SummaryTable"####
+
+SummaryTable_processed = SummaryTable_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+SummaryTable = importlib.import_module(SummaryTable_processed)#####
+""")
 
 
-
+	f = open(temp, "a")
 	###############################################################################################################################################################
 	####	Prepare le style pour les pages HTML
 	###############################################################################################################################################################
@@ -97,11 +159,11 @@ def EcrireVisualTE(pathVisual, pathVisualNEW, moduleSelectTE, moduleCommonDATA):
 	###############################################################################################################################################################
 	f.write("########################################################################################################################\n")
 	f.write("# ajout des commandes de dash\n")
-	f.write("app.layout = html.Div([ \n")
+	f.write("visual_layout = html.Div([ \n")
 	f.close()
 
 	# Variables a changer avec les nouvelles fonctions !
-	otherOnglets = ['TE Genome Browser', 'TE Chromosome Distribution', 'TE General Features', 'TE Similarity Occurrences', 'TE Genetic Environment', 'TE - Neighboring Gene Distance', 'TE - Neighboring Gene Function', 'Overlapping TFBS', 'Summary Table']   
+	otherOnglets = ['TE Genome Browser', 'TE Chromosome Distribution', 'TE General Features', 'TE Similarity Occurrences', 'TE Genetic Environment', 'TE - Neighboring Gene Distance', 'TE - Neighboring Gene Function', 'Overlapping TFBS', 'Summary Table']
 	urlOnglets = ['GenomeBrowser', 'ChromosomeDistribution', 'GeneralFeatures', 'SimilarityOccurrences', 'TEEnvironment', 'TEDistance', 'NeighboringGeneFunction', 'OverlappingTFBS', 'SummaryTable']
 	# Afficher la partie 'commune' des fonctions
 	Create_CommonHead.CommonLink(temp, otherOnglets, urlOnglets)
@@ -158,7 +220,7 @@ def EcrireVisualTE(pathVisual, pathVisualNEW, moduleSelectTE, moduleCommonDATA):
 	f.write("		]) \n")
 	f.write("		return welcome \n")
 	f.write("\n\n\n\n\n\n")
-	
+
 	f.write("########################################################################################################################\n")
 	f.write("# ici le callback qui donne le result via le store a tous les callback \n")
 	f.write("@app.callback( \n")
@@ -166,7 +228,7 @@ def EcrireVisualTE(pathVisual, pathVisualNEW, moduleSelectTE, moduleCommonDATA):
 	f.write("	[Input('SizeSlider_commun', 'value'), Input('SimilaritySlider_commun', 'value')] \n")
 	f.write(") \n")
 	f.write("def update_output(x, y) : \n")
-	
+
 	#tempFile = pathVisualNEW + '/Functions/Sliders.txt'
 	#f.write("	file = open('" + str(tempFile) + "', 'w') \n")
 	#f.write("	file.write(str(x[0]) + '\\n') \n")
@@ -174,7 +236,7 @@ def EcrireVisualTE(pathVisual, pathVisualNEW, moduleSelectTE, moduleCommonDATA):
 	#f.write("	file.write(str(y[0]) + '\\n') \n")
 	#f.write("	file.write(str(y[1]) + '\\n') \n")
 	#f.write("	file.close() \n\n")
-	
+
 	f.write("	L = [ x[0], x[1], y[0], y[1] ] \n")
 	f.write("	return L \n\n\n\n")
 
@@ -182,19 +244,16 @@ def EcrireVisualTE(pathVisual, pathVisualNEW, moduleSelectTE, moduleCommonDATA):
 
 
 	###############################################################################################################################################################
-	####	Lancement du serveur	
+	####	Lancement du serveur
 	###############################################################################################################################################################
 	f.write("########################################################################################################################\n")
 	f.write("# Lancement du 'serveur' de dash - plotly\n")
 	f.write("if __name__ == '__main__':\n")
 	f.write("	app.run_server(debug=True, host='0.0.0.0', port=8050)\n\n\n")
 	f.close()
-	
+
 	numberTE = 1
 	if len(moduleSelectTE.list_selection_TE) > 1 and moduleSelectTE.OfficialName[0:5] != 'Merge' :
 		numberTE = len(moduleSelectTE.list_selection_TE)
-	
+
 	return moduleCommonDATA.nbSeq_Assemble, numberTE
-
-
-

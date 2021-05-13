@@ -12,9 +12,9 @@ import plotly.graph_objs as go
 ###	Create the dataframe for the table
 ########################################################################################################################
 def Dataframe_in_Table(temp, numberTE) :
-	
+
 	f = open(temp, "a")
-	
+
 	f.write("\tInfosTable = [] \n")
 	f.write("\tSelect_myTE = CommonDATA_SelectTEs.dataFrame_MyTE.loc[ ")
 	f.write(" (CommonDATA_SelectTEs.dataFrame_MyTE['Size'] >= tailleMin) & (CommonDATA_SelectTEs.dataFrame_MyTE['Size'] <= tailleMax)")
@@ -29,7 +29,7 @@ def Dataframe_in_Table(temp, numberTE) :
 	f.write("\tSimilarity = Select_myTE['Similarity'].tolist() \n")
 	f.write("\tConsDeb = Select_myTE['Consensus Start'].tolist() \n")
 	f.write("\tConsFin = Select_myTE['Consensus End'].tolist() \n\n")
-	
+
 	f.write("\tSelect_myGene = CommonDATA_SelectTEs.dataFrame_MyGene.loc[ CommonDATA_SelectTEs.dataFrame_MyGene['TE Index'].isin(IndexTE), : ] \n")
 	f.write("\tIndexGene = Select_myGene['TE Index'].tolist() \n")
 	f.write("\tTEGenePos = Select_myGene['TE-Gene Position'].tolist() \n")
@@ -40,10 +40,10 @@ def Dataframe_in_Table(temp, numberTE) :
 	f.write("\tGeneOrient = Select_myGene['Gene Sens'].tolist() \n")
 	f.write("\tGeneID = Select_myGene['Gene ID'].tolist() \n")
 	f.write("\tGeneFunction = Select_myGene['Gene Function'].tolist() \n\n\n\n")
-	
-	
+
+
 	f.write("\tfor z in range(0, len(Seq), 1) : \n")
-	f.write("\t	rowList = [ IndexTE[z], Family[z], '', Seq[z], DEB[z], FIN[z], Sens[z], Similarity[z], ConsDeb[z], ConsFin[z], '' , '', '' , '', '', '', '', '' , '', '', '', '', '', '', '' , '', '', '', '', '', '', '' , '', '', '', '', '', ''] \n")   
+	f.write("\t	rowList = [ IndexTE[z], Family[z], '', Seq[z], DEB[z], FIN[z], Sens[z], Similarity[z], ConsDeb[z], ConsFin[z], '' , '', '' , '', '', '', '', '' , '', '', '', '', '', '', '' , '', '', '', '', '', '', '' , '', '', '', '', '', ''] \n")
 	f.write("\t	for j in range(0, len(IndexGene), 1) : \n")
 	f.write("\t		if IndexGene[j] == IndexTE[z] and GeneName[j] != 'VIDE' : \n")
 	f.write("\t			if TEGenePos[j] == \"5'\" : \n")
@@ -70,82 +70,82 @@ def Dataframe_in_Table(temp, numberTE) :
 	f.write("\t				rowList[33] = GeneOrient[j] \n")
 	f.write("\t				rowList[34] = GeneID[j] \n")
 	f.write("\t				rowList[35] = GeneFunction[j] \n")
-	
-	f.write("\t	###################################################################################### \n") 
-	f.write("\t	# Now reads the Chipseq data for the TE Occurrences \n") 
-	f.write("\t	# put all columns in list \n") 
-	f.write("\t	chipSeqOverlap = '' \n") 
-	f.write("\t	chipSeqDeb = '' \n") 
-	f.write("\t	chipSeqFin = '' \n") 
-	f.write("\t	chipSeqName = '' \n") 
-	f.write("\t	chipSeqType = '' \n") 
-	f.write("\t	chipSeqTissue = '' \n") 
-	f.write("\t	chipSeqOrgan = '' \n") 
-	f.write("\t	filename = 'Downloaded/Selected_ChipSeq/ChipSeq_for__' + Family[z] + '__occurrences_' + str(IndexTE[z]) + '_.txt' \n") 
-	f.write("\t	# memorize lines from file \n") 
-	f.write("\t	f = open(filename, 'r') \n") 
-	f.write("\t	lignes = f.readlines() \n") 
+
+	f.write("\t	###################################################################################### \n")
+	f.write("\t	# Now reads the Chipseq data for the TE Occurrences \n")
+	f.write("\t	# put all columns in list \n")
+	f.write("\t	chipSeqOverlap = '' \n")
+	f.write("\t	chipSeqDeb = '' \n")
+	f.write("\t	chipSeqFin = '' \n")
+	f.write("\t	chipSeqName = '' \n")
+	f.write("\t	chipSeqType = '' \n")
+	f.write("\t	chipSeqTissue = '' \n")
+	f.write("\t	chipSeqOrgan = '' \n")
+	f.write("\t	filename = pathVisual+'/second_half/Downloaded/Selected_ChipSeq/ChipSeq_for__' + Family[z] + '__occurrences_' + str(IndexTE[z]) + '_.txt' \n")
+	f.write("\t	# memorize lines from file \n")
+	f.write("\t	f = open(filename, 'r') \n")
+	f.write("\t	lignes = f.readlines() \n")
 	f.write("\t	f.close() \n\n")
-	
+
 	#dataFrame_ChipSEQ = pd.read_csv(filename)
-	#Select_ChipSEQ = dataFrame_ChipSEQ.loc[ (int(DEB[z]) <= dataFrame_ChipSEQ['Start'] & dataFrame_ChipSEQ['End'] <= int(FIN[z])) | (dataFrame_ChipSEQ['Start'] <= int(DEB[z]) & int(FIN[z]) <= dataFrame_ChipSEQ['End']) | (int(DEB[z]) <= dataFrame_ChipSEQ['Start'] & dataFrame_ChipSEQ['Start'] <  int(FIN[z])) | (int(DEB[z]) <  dataFrame_ChipSEQ['End'] & dataFrame_ChipSEQ['Start'] <= int(FIN[z])), : ] 
-	
-	f.write("\t	for i in range(1, len(lignes), 1) : \n") 
-	f.write("\t		lignes[i] = lignes[i].rstrip() \n") 
-	f.write("\t		coupe = lignes[i].split(',') \n") 
-	f.write("\t		if (int(DEB[z]) <= int(coupe[1]) and int(coupe[2]) <= int(FIN[z])) or (int(coupe[1]) <= int(DEB[z]) and int(FIN[z]) <= int(coupe[2])) or (int(DEB[z]) <= int(coupe[1]) and int(coupe[1]) <  int(FIN[z])) or (int(DEB[z]) <  int(coupe[2]) and int(coupe[1]) <= int(FIN[z])) : \n\n") 
-	f.write("\t			valueOverlapNT = 0 \n") 
-	f.write("\t			if int(DEB[z]) <= int(coupe[1]) and int(coupe[2]) <= int(FIN[z]) : \n") 
-	f.write("\t				valueOverlapNT = int(coupe[2]) - int(coupe[1]) \n") 
-	f.write("\t			elif int(coupe[1]) <= int(DEB[z]) and int(FIN[z]) <= int(coupe[2]) : \n") 
-	f.write("\t				valueOverlapNT = int(FIN[z]) - int(DEB[z]) \n") 
-	f.write("\t			elif int(DEB[z]) <= int(coupe[1]) and int(coupe[2]) <  int(FIN[z]) : \n") 
-	f.write("\t				valueOverlapNT = int(FIN[z]) - int(coupe[1]) \n") 
-	f.write("\t			elif int(DEB[z]) <  int(coupe[1]) and int(coupe[2]) <= int(FIN[z]) : \n") 
-	f.write("\t				valueOverlapNT = int(coupe[2]) - int(DEB[z]) \n\n") 
-					
-	f.write("\t			if chipSeqDeb == '' : \n") 
-	f.write("\t				chipSeqOverlap = str(valueOverlapNT) \n") 
-	f.write("\t				chipSeqDeb = coupe[1] \n") 
-	f.write("\t				chipSeqFin = coupe[2] \n") 
-	f.write("\t				chipSeqName = coupe[5] \n") 
-	f.write("\t				chipSeqType = coupe[6] \n") 
-	f.write("\t				decoupe1 = coupe[7].split('__') \n") 
-	f.write("\t				chipSeqTissue = decoupe1[0] \n") 
-	f.write("\t				decoupe2 = coupe[8].split('__') \n") 
-	f.write("\t				chipSeqOrgan = decoupe2[0] \n") 
-	f.write("\t			else : \n") 
-	f.write("\t				chipSeqOverlap = chipSeqOverlap + '                                                       \\n' + str(valueOverlapNT) \n") 
-	f.write("\t				chipSeqDeb = chipSeqDeb         + '                                                       \\n' + coupe[1] \n") 
-	f.write("\t				chipSeqFin = chipSeqFin         + '                                                       \\n' + coupe[2] \n") 
-	f.write("\t				chipSeqName = chipSeqName       + '                                                       \\n' + coupe[3] \n") 
-	f.write("\t				chipSeqType = chipSeqType       + '                                                       \\n' + coupe[4] \n") 
-	f.write("\t				chipSeqTissue = chipSeqTissue   + '                                                       \\n' + decoupe1[0] \n") 
-	f.write("\t				chipSeqOrgan = chipSeqOrgan     + '                                                       \\n' + decoupe2[0] \n") 
-					
-	f.write("\t			for j in range(1, len(decoupe1), 1) : \n") 
-	f.write("\t				chipSeqTissue = chipSeqTissue   + '                                                       \\n' + decoupe1[j] \n") 
-	f.write("\t			for j in range(1, len(decoupe2), 1) : \n") 
-	f.write("\t				chipSeqOrgan = chipSeqOrgan     + '                                                       \\n' + decoupe2[j] \n") 
-	f.write("\t	rowList[10] = chipSeqOverlap \n") 
-	f.write("\t	rowList[11] = chipSeqDeb \n") 
-	f.write("\t	rowList[12] = chipSeqFin \n") 
-	f.write("\t	rowList[13] = chipSeqName \n") 
-	f.write("\t	rowList[14] = chipSeqType \n") 
-	f.write("\t	rowList[15] = chipSeqTissue \n") 
-	f.write("\t	rowList[16] = chipSeqOrgan \n\n") 
-		
+	#Select_ChipSEQ = dataFrame_ChipSEQ.loc[ (int(DEB[z]) <= dataFrame_ChipSEQ['Start'] & dataFrame_ChipSEQ['End'] <= int(FIN[z])) | (dataFrame_ChipSEQ['Start'] <= int(DEB[z]) & int(FIN[z]) <= dataFrame_ChipSEQ['End']) | (int(DEB[z]) <= dataFrame_ChipSEQ['Start'] & dataFrame_ChipSEQ['Start'] <  int(FIN[z])) | (int(DEB[z]) <  dataFrame_ChipSEQ['End'] & dataFrame_ChipSEQ['Start'] <= int(FIN[z])), : ]
+
+	f.write("\t	for i in range(1, len(lignes), 1) : \n")
+	f.write("\t		lignes[i] = lignes[i].rstrip() \n")
+	f.write("\t		coupe = lignes[i].split(',') \n")
+	f.write("\t		if (int(DEB[z]) <= int(coupe[1]) and int(coupe[2]) <= int(FIN[z])) or (int(coupe[1]) <= int(DEB[z]) and int(FIN[z]) <= int(coupe[2])) or (int(DEB[z]) <= int(coupe[1]) and int(coupe[1]) <  int(FIN[z])) or (int(DEB[z]) <  int(coupe[2]) and int(coupe[1]) <= int(FIN[z])) : \n\n")
+	f.write("\t			valueOverlapNT = 0 \n")
+	f.write("\t			if int(DEB[z]) <= int(coupe[1]) and int(coupe[2]) <= int(FIN[z]) : \n")
+	f.write("\t				valueOverlapNT = int(coupe[2]) - int(coupe[1]) \n")
+	f.write("\t			elif int(coupe[1]) <= int(DEB[z]) and int(FIN[z]) <= int(coupe[2]) : \n")
+	f.write("\t				valueOverlapNT = int(FIN[z]) - int(DEB[z]) \n")
+	f.write("\t			elif int(DEB[z]) <= int(coupe[1]) and int(coupe[2]) <  int(FIN[z]) : \n")
+	f.write("\t				valueOverlapNT = int(FIN[z]) - int(coupe[1]) \n")
+	f.write("\t			elif int(DEB[z]) <  int(coupe[1]) and int(coupe[2]) <= int(FIN[z]) : \n")
+	f.write("\t				valueOverlapNT = int(coupe[2]) - int(DEB[z]) \n\n")
+
+	f.write("\t			if chipSeqDeb == '' : \n")
+	f.write("\t				chipSeqOverlap = str(valueOverlapNT) \n")
+	f.write("\t				chipSeqDeb = coupe[1] \n")
+	f.write("\t				chipSeqFin = coupe[2] \n")
+	f.write("\t				chipSeqName = coupe[5] \n")
+	f.write("\t				chipSeqType = coupe[6] \n")
+	f.write("\t				decoupe1 = coupe[7].split('__') \n")
+	f.write("\t				chipSeqTissue = decoupe1[0] \n")
+	f.write("\t				decoupe2 = coupe[8].split('__') \n")
+	f.write("\t				chipSeqOrgan = decoupe2[0] \n")
+	f.write("\t			else : \n")
+	f.write("\t				chipSeqOverlap = chipSeqOverlap + '                                                       \\n' + str(valueOverlapNT) \n")
+	f.write("\t				chipSeqDeb = chipSeqDeb         + '                                                       \\n' + coupe[1] \n")
+	f.write("\t				chipSeqFin = chipSeqFin         + '                                                       \\n' + coupe[2] \n")
+	f.write("\t				chipSeqName = chipSeqName       + '                                                       \\n' + coupe[3] \n")
+	f.write("\t				chipSeqType = chipSeqType       + '                                                       \\n' + coupe[4] \n")
+	f.write("\t				chipSeqTissue = chipSeqTissue   + '                                                       \\n' + decoupe1[0] \n")
+	f.write("\t				chipSeqOrgan = chipSeqOrgan     + '                                                       \\n' + decoupe2[0] \n")
+
+	f.write("\t			for j in range(1, len(decoupe1), 1) : \n")
+	f.write("\t				chipSeqTissue = chipSeqTissue   + '                                                       \\n' + decoupe1[j] \n")
+	f.write("\t			for j in range(1, len(decoupe2), 1) : \n")
+	f.write("\t				chipSeqOrgan = chipSeqOrgan     + '                                                       \\n' + decoupe2[j] \n")
+	f.write("\t	rowList[10] = chipSeqOverlap \n")
+	f.write("\t	rowList[11] = chipSeqDeb \n")
+	f.write("\t	rowList[12] = chipSeqFin \n")
+	f.write("\t	rowList[13] = chipSeqName \n")
+	f.write("\t	rowList[14] = chipSeqType \n")
+	f.write("\t	rowList[15] = chipSeqTissue \n")
+	f.write("\t	rowList[16] = chipSeqOrgan \n\n")
+
 	f.write("\t	InfosTable.append(rowList) \n\n\n")
-					
-					
+
+
 	f.write("\t	dataFrame_Summary = pd.DataFrame(InfosTable, columns=[ \n")
 	f.write("\t		\"Index\", \"TE Family\", \"Color\", \"Seq Name\", \"Start\", \"End\", \"Orientation\", \"Similarity\", \"Consensus Start\", \"Consensus End\", \n")
-	f.write("\t		\"TFBS Overlap\", \"TFBS Start\", \"TFBS End\", \"TFBS Name\", \"TFBS Type\", \"TFBS Tissue\", \"TFBS Organ\", \n") 
+	f.write("\t		\"TFBS Overlap\", \"TFBS Start\", \"TFBS End\", \"TFBS Name\", \"TFBS Type\", \"TFBS Tissue\", \"TFBS Organ\", \n")
 	f.write("\t		\"5' Gene Distance\", \"5' Gene Name\", \"5' Gene Start\", \"5' Gene End\", \"5' Gene Orient.\", \"5' GeneID\", \"5' Gene Function\", \n")
 	f.write("\t		\"3' Gene Distance\", \"3' Gene Name\", \"3' Gene Start\", \"3' Gene End\", \"3' Gene Orient.\", \"3' GeneID\", \"3' Gene Function\", \n")
-	f.write("\t		\"Included Gene Distance\", \"Included Gene Name\", \"Included Gene Start\", \"Included Gene End\", \"Included Gene Orient.\", \"Included GeneID\", \"Included Gene Function\", \n") 
+	f.write("\t		\"Included Gene Distance\", \"Included Gene Name\", \"Included Gene Start\", \"Included Gene End\", \"Included Gene Orient.\", \"Included GeneID\", \"Included Gene Function\", \n")
 	f.write("\t	] ) \n\n")
-	
+
 	f.close()
 
 
@@ -174,13 +174,13 @@ def StyleTableInCallback9(temp, numberTE, moduleSelectTE) :
 	f.write("\t			{'name': [\"TE Occurrences\", \"Similarity\"],       'id': \"Similarity\" }, \n")
 	f.write("\t			{'name': [\"TE Occurrences\", \"Consensus Start\"],  'id': \"Consensus Start\" }, \n")
 	f.write("\t			{'name': [\"TE Occurrences\", \"Consensus End\"],    'id': \"Consensus End\" }, \n")
-	f.write("\t			{'name': [\"TFBS\", \"Overlap nt\"], 'id': \"TFBS Overlap\" }, \n") 
-	f.write("\t			{'name': [\"TFBS\", \"Start\"],      'id': \"TFBS Start\" }, \n") 
-	f.write("\t			{'name': [\"TFBS\", \"End\"],        'id': \"TFBS End\" }, \n") 
+	f.write("\t			{'name': [\"TFBS\", \"Overlap nt\"], 'id': \"TFBS Overlap\" }, \n")
+	f.write("\t			{'name': [\"TFBS\", \"Start\"],      'id': \"TFBS Start\" }, \n")
+	f.write("\t			{'name': [\"TFBS\", \"End\"],        'id': \"TFBS End\" }, \n")
 	f.write("\t			{'name': [\"TFBS\", \"Name\"],       'id': \"TFBS Name\" }, \n")
-	f.write("\t			{'name': [\"TFBS\", \"Type\"],       'id': \"TFBS Type\" }, \n") 
-	f.write("\t			{'name': [\"TFBS\", \"Tissue\"],     'id': \"TFBS Tissue\" }, \n") 
-	f.write("\t			{'name': [\"TFBS\", \"Organ\"],      'id': \"TFBS Organ\" }, \n") 
+	f.write("\t			{'name': [\"TFBS\", \"Type\"],       'id': \"TFBS Type\" }, \n")
+	f.write("\t			{'name': [\"TFBS\", \"Tissue\"],     'id': \"TFBS Tissue\" }, \n")
+	f.write("\t			{'name': [\"TFBS\", \"Organ\"],      'id': \"TFBS Organ\" }, \n")
 	f.write("\t			{'name': [\"5' Gene\", \"Distance\"],    'id': \"5' Gene Distance\" }, \n")
 	f.write("\t			{'name': [\"5' Gene\", \"Name\"],        'id': \"5' Gene Name\" }, \n")
 	f.write("\t			{'name': [\"5' Gene\", \"Start\"],       'id': \"5' Gene Start\" }, \n")
@@ -203,7 +203,7 @@ def StyleTableInCallback9(temp, numberTE, moduleSelectTE) :
 	f.write("\t			{'name': [\"Included Gene\", \"ID\"],          'id': \"Included GeneID\" }, \n")
 	f.write("\t			{'name': [\"Included Gene\", \"Function\"],    'id': \"Included Gene Function\" }, \n")
 	f.write("\t		], \n\n")
-	
+
 	f.write("\t		style_data={ \n")
 	f.write("\t			'textOverflow': 'ellipsis', \n")
 	f.write("\t		}, \n")
@@ -265,7 +265,7 @@ def StyleTableInCallback9(temp, numberTE, moduleSelectTE) :
 	f.write("\t			{'if': {'column_id': \"Included GeneID\"}, 'width': 30}, \n")
 	f.write("\t			{'if': {'column_id': \"Included Gene Function\"}, 'width': 150}, \n")
 	f.write("\t		], \n")
-	
+
 	f.write("\t		style_header={ \n")
 	f.write("\t			'whiteSpace': 'normal', \n")
 	f.write("\t			'height': 'auto', \n")
@@ -273,7 +273,7 @@ def StyleTableInCallback9(temp, numberTE, moduleSelectTE) :
 	f.write("\t			'fontWeight': 'bold', \n")
 	f.write("\t			'textAlign': 'center', \n")
 	f.write("\t		}, \n")
-	
+
 	f.write("\t		style_cell={ \n")
 	f.write("\t			'textAlign': 'left', \n")
 	f.write("\t			'overflow': 'hidden', \n")
@@ -281,12 +281,12 @@ def StyleTableInCallback9(temp, numberTE, moduleSelectTE) :
 	f.write("\t			'height': '20px', \n")
 	f.write("\t			'lineHeight': '20px', \n")
 	f.write("\t		}, \n")
-	
+
 	f.write("\t		style_table={ \n")
 	f.write("\t			'height':850,\n")
 	#f.write("\t			'overflowX': 'auto', 'overflowY': 'auto', \n")
 	f.write("\t		}, \n")
-	
+
 	f.write("\t		tooltip_data=[ \n")
 	f.write("\t		{ \n")
 	f.write("\t			column: {'value': str(value), 'type': 'markdown'} \n")
@@ -294,28 +294,28 @@ def StyleTableInCallback9(temp, numberTE, moduleSelectTE) :
 	f.write("\t		} for row in dataFrame_Summary.to_dict('rows') \n")
 	f.write("\t		], \n")
 	f.write("\t		tooltip_duration=None, \n\n")
-	
+
 	f.write("\t		page_size = 100, \n")
 	f.write("\t		merge_duplicate_headers = True, \n")
 	f.write("\t		fixed_rows={'headers': True}, \n")
 
 	f.write("\t	),\n")
 	f.write("\t], style={'width': '100%', 'display': 'inline-block', 'backgroundColor':'rgb(245, 245, 255)', 'padding':'5px 5px'} ), \n\n")
-	
+
 	f.write("\treturn Onglet9_Table \n")
 	f.close()
-	
-	
-	
+
+
+
 ########################################################################################################################
 ###	Create The table with the data
 ########################################################################################################################
 def CreateCallBack_Tableau_Onglet9(temp, numberTE, moduleSelectTE) :
 
 	f = open(temp, "a")
-	f.write("########################################################################################################################\n")	
+	f.write("########################################################################################################################\n")
 	f.write("# Callbacks for the Table\n")
-	
+
 	f.write("@app.callback( \n")
 	f.write("\tOutput('Onglet9_Tableau_Div', 'children'), \n")
 	f.write("\t[Input('memory', 'data')]\n")
@@ -347,52 +347,52 @@ def CreateCallBack_Tableau_Onglet9(temp, numberTE, moduleSelectTE) :
 	f.write("\telse : \n")
 	f.write("\t\ttailleMax = MaxConsensus * valueSliders[1] / 100 \n\n")
 	f.close()
-	
-	
-	
+
+
+
 	# Create the dataframe for the table
 	Dataframe_in_Table(temp, numberTE)
 	# Create the table
 	StyleTableInCallback9(temp, numberTE, moduleSelectTE)
-	
-	
-	
-	
-	
-	
-	
+
+
+
+
+
+
+
 ########################################################################################################################
-###	
+###
 ########################################################################################################################
 def Create_layout(temp):
-	
+
 	f = open(temp, "a")
 	# cree le layout qui va tout contenir
 	f.write("########################################################################################################################\n")
 	f.write("# Creation du Layout pour dash\n\n")
 	f.write("SummaryTable_layout = html.Div([ \n")
-	
+
 	f.write("\t	html.Div(id='Onglet9_Tableau_Div'), \n")
 	f.write("], style={'width': '99%', 'display': 'inline-block', 'backgroundColor': 'rgb(245, 245, 255)'} )\n")
 	f.write("\n\n\n\n")
 	f.close()
-	
-	
-	
-	
-	
+
+
+
+
+
 ########################################################################################################################
 ###	Create the SummaryTable function
 ########################################################################################################################
 def SummaryTable(pathVisualNEW, nbSeq_Assemble, numberTE):
-	
+
 	###############################################################################################################################################################
 	# Import the recently created modules
 	pathSelectTE = os.path.realpath(pathVisualNEW + '/Functions/CommonDATA_SelectTEs.py')
 	loaderSelectTE = importlib.util.spec_from_file_location('CommonDATA_SelectTEs', pathSelectTE)
 	moduleSelectTE = importlib.util.module_from_spec(loaderSelectTE)
 	loaderSelectTE.loader.exec_module(moduleSelectTE)
-	
+
 	# Ajout des librairies python pour le serveur
 	temp = pathVisualNEW + '/Functions/SummaryTable.py'
 	f = open(temp, "w")
@@ -408,21 +408,42 @@ def SummaryTable(pathVisualNEW, nbSeq_Assemble, numberTE):
 	f.write("import pandas as pd \n")
 	f.write("from dash.dependencies import Input, Output\n")
 	f.write("from app import app \n")
-	f.write("from Functions import CommonDATA, CommonDATA_SelectTEs, Couleur\n\n\n\n")
+	f.close()
+	with open(temp, "a") as file:
+		file.write("""
+from Scripts.Interface_Main_Dash import pathVisual#########
+import importlib
+Couleur_raw = pathVisual+"/second_half/Functions/Couleur"####
 
+Couleur_processed = Couleur_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+Couleur = importlib.import_module(Couleur_processed)#####
+
+CommonDATA_SelectTEs_raw = pathVisual+"/second_half/Functions/CommonDATA_SelectTEs"####
+
+CommonDATA_SelectTEs_processed = CommonDATA_SelectTEs_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+CommonDATA_SelectTEs = importlib.import_module(CommonDATA_SelectTEs_processed)#####
+
+CommonDATA_raw = pathVisual+"/second_half/Functions/CommonDATA"####
+
+CommonDATA_processed = CommonDATA_raw.replace("/",".")#####
+# The file gets executed upon import, as expected.
+CommonDATA = importlib.import_module(CommonDATA_processed)#####
+
+
+""")
+	f = open(temp, "a")
 	f.write("########################################################################################################################\n")
 	f.write("# Data that does not change with the sliders \n\n")
 
 	f.close()
-	
-	
+
+
 	# Create invariable layout
 	Create_layout(temp)
-	
-	
-	
-	# Create the layout with the table 
+
+
+
+	# Create the layout with the table
 	CreateCallBack_Tableau_Onglet9(temp, numberTE, moduleSelectTE)
-	
-	
-	

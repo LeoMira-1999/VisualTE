@@ -1,24 +1,42 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+#author: Leonardo Mirandola
 
+#importing neccessary packages
 import os
 import sys
 import os.path
-import base64
-import requests, json
+
+#Package to move / copy
 import shutil
+
+#packages to import with string and link paths
 import importlib
 import importlib.util
-import time
-import dash
+
+#packgae to unzip
 import zipfile
+
+#package for gunzip
 import gzip
+
+#dash packages
+import dash
 import dash_uploader as du
 import dash_core_components as dcc
 import dash_html_components as html
-import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 
+#dash package to prevent updates
+from dash.exceptions import PreventUpdate
+
+#dash package that can be called if an output doesn't need to change
+from dash import no_update
+
+#import app
+from app import app
+
+#importing all necessary backend file management for Data processing
 from . import Interface_DownloadGenomes
 from . import dash_functions
 from . import ReadInfos_TE
@@ -28,6 +46,7 @@ from . import Create_MainFile
 from . import Create_Color
 from . import Create_CommonDATA
 
+#importing all necessary backend file management for TE processing
 from . import Create_CommonDATA2
 from . import Create_MainFile
 from . import Create_SelectedAnnotations
@@ -35,6 +54,7 @@ from . import Create_Random_Sequences
 from . import Create_Overlap_TFBS
 from . import Create_Alignment_and_Tree
 
+#importing all necessary backend dash app creation for TE processing
 from . import MakeFunction_GenomeBrowser
 from . import MakeFunction_ChromosomeDistribution
 from . import MakeFunction_GeneralFeaturesDistribution
@@ -46,17 +66,25 @@ from . import MakeFunction_OverlappingTFBS
 from . import MakeFunction_SummaryTable
 
 
-
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
 #######################################################################
 def Dash_CreateGenomeDATA():
+    """
+    Arguments: None
 
+    Description: Called when the user uses the '-Dash' argument in the make_VisualTE3.py
+                to launch the dash interface
+
+    Return: None
+
+    """
+    #all necessary global variables to be used and modified upon call
     global pathVisual
     global pathVisualDATA
     global pathVisualDATA2
     global tab_status
     global enabling
+    global Genome_Name
+    global TE_method
     global fileTE
     global fileFNA
     global fileGFF
@@ -100,36 +128,80 @@ def Dash_CreateGenomeDATA():
     global organ_dictionary_RandomSeq
     global nbSeq_Assemble
     global numberTE
+    global res
 
-    app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+    if not os.path.exists("DB.txt"):
+        with open("DB.txt" , "w") as file:
+            file.write("")
 
+    genome_dropdown = []
+
+    with open("DB.txt" , "r") as file:
+        lines = file.readlines()
+        for line in lines:
+            genome = line.split("\t")[2]
+            genome_dropdown.append({"label":genome,"value":genome})
+
+    #allows the upload of files bigger than 200 Mb in a Dash_upload directory
     du.configure_upload(app, "Dash_upload", use_upload_id=False)
 
+    #creation of the app layout
     app.layout = html.Div([
 
+        #Creating the main div
+        html.Div(id = "main-all", children = [
+
+
         ##############################################################
+
+        #creating a H1 main title centered
         html.H1(children='VisualTE V3', style = {'textAlign': 'center'}),
 
+        #creating a Div for genome and method name input
         html.Div([
+
             html.H3(children = "Enter your genome name and method name", id = "main-text"),
-            dcc.Input(
-              id="genome-name-entry",
-              type="text",
-              placeholder="Enter your genome name here",
-              style={
-                  'width': '20%'
-              }),
 
-            dcc.Input(
-              id="method-name-entry",
-              type="text",
-              placeholder="Repet or RepeatMasker or Blast",
-              style={
-                  'width': '20%',
-                  'margin' : '20px'
-              }),
+            html.Div([
 
-            html.Button('Initiate', id='initiatition', n_clicks=0),
+                dcc.Dropdown(
+                    id='genome-dropdown',
+                    placeholder = 'Enter your genome name',
+                    style = {'margin':'2% 0% 2% 0%'},
+                    options = genome_dropdown,
+                    multi = False
+                ),
+
+                dcc.Dropdown(
+                    id='TE-dropdown-selector',
+                    placeholder = 'Enter your TE name',
+                    style = {'margin':'2% 0% 2% 0%'},
+                    disabled = True,
+                    multi = False
+                ),
+
+                #genome name textbox
+                dcc.Input(
+                  id="genome-name-entry",
+                  type="text",
+                  placeholder="Enter your genome name here",
+                  style={
+                      'width': '20%'
+                  }),
+
+                #method name textbox
+                dcc.Input(
+                  id="method-name-entry",
+                  type="text",
+                  placeholder="Repet or RepeatMasker or Blast",
+                  style={
+                      'width': '21%',
+                      'margin' : '20px'
+                  }),
+
+                #submit button
+                html.Button('Initiate', id='initiation', n_clicks=0),
+            ],id = "pre-processing", )
 
         ], style = {
             'width': '80%',
@@ -138,21 +210,29 @@ def Dash_CreateGenomeDATA():
             'textAlign': 'center'
             }),
 
+        #horizontal line
         html.Hr(id = "hr"),
 
         ###########################################################
+
+        #creation of the tab section
         dcc.Tabs([
+
+            #creating a tab
             dcc.Tab(label='Data Loading', children=[
 
                 ##############################################################
+                #TE file upload div
                 html.Div([
 
                     html.H6("Upload your TE file"),
+
+                    # file Uploading component
                     du.Upload(
                         id="upload-TE",
                         text = "Drag and drop or click to select file",
                         max_files=1,
-                        max_file_size = 10240,
+                        max_file_size = 10240, # limited to 10 Gb
                         pause_button=True,
                         default_style = {
                             'width': '80%',
@@ -174,12 +254,16 @@ def Dash_CreateGenomeDATA():
                     }),
 
                 ##############################################################
+
+                #genome files div
                 html.Div([
 
                     html.H6("Upload your genome files"),
 
+                    #radiobutton div
                     html.Div([
 
+                        #radiobuttons to select upload or download
                         dcc.RadioItems(
                             id = "genome-file-bool",
                             options=[
@@ -190,13 +274,17 @@ def Dash_CreateGenomeDATA():
                             labelStyle={'display': 'inline-block'}),
 
                     ]),
+
+                #Upload genome files
                 html.Div([
                           html.P("Upload your FNA file"),
+
+                          #Uploading component
                           du.Upload(
                               id="upload-FNA",
                               text = "Drag and drop or click to select file",
                               max_files=1,
-                              max_file_size = 10240,
+                              max_file_size = 10240, # Max 10 Gb upload
                               pause_button=True,
                               default_style = {
                                   'width': '80%',
@@ -210,11 +298,13 @@ def Dash_CreateGenomeDATA():
 
 
                           html.P("Upload your GFF file"),
+
+                          #Uploading component
                           du.Upload(
                               id="upload-GFF",
                               text = "Drag and drop or click to select file",
                               max_files=1,
-                              max_file_size = 10240,
+                              max_file_size = 10240, # Max 10 Gb upload
                               pause_button=True,
                               default_style = {
                                   'width': '80%',
@@ -228,31 +318,37 @@ def Dash_CreateGenomeDATA():
 
                       ], id = 'genome-container-yes'),
 
+                # genome download files
                 html.Div([
-                          dcc.Input(
-                            id="genome-entry",
-                            type="text",
-                            placeholder="Enter your genome name",
+
+                        #textbox input genome name
+                        dcc.Input(
+                        id="genome-entry",
+                        type="text",
+                        placeholder="Enter your genome name",
+                        style={
+                            'width': '80%',
+                            'margin' : '10px'
+                        }),
+
+                        # download button
+                        html.Button('Download', id='submit-genome', n_clicks=0,
                             style={
                                 'width': '80%',
                                 'margin' : '10px'
-                            }),
+                        }),
 
-                            html.Button('Download', id='submit-genome', n_clicks=0,
-                                style={
-                                    'width': '80%',
-                                    'margin' : '10px'
-                            }),
+                        #loading icon
+                        dcc.Loading(
+                            type="circle",
+                            children=html.Div(id="loading-output-genome", style={'margin':'20px'})
+                            ),
 
-                            dcc.Loading(
-                                type="circle",
-                                children=html.Div(id="loading-output-genome", style={'margin':'20px'})
-                                ),
+                        #div used to display text when download completed
+                        html.Div(id = "genome-download-output")
 
-                            html.Div(id = "genome-download-output")
+                    ], id = 'genome-container-no'),
 
-
-                      ], id = 'genome-container-no'),
                 ], id = 'genome-container',style = {
                     'float':'left',
                     'width' :'25%',
@@ -262,12 +358,15 @@ def Dash_CreateGenomeDATA():
                     }),
 
                 ##############################################################
+                #GO files div
                 html.Div([
 
                     html.H6("Upload your GO files"),
 
+                    # GO radiobutton div
                     html.Div([
 
+                        #radiobutton to select local or download
                         dcc.RadioItems(
                             id = "GO-file-bool",
                             options=[
@@ -278,13 +377,17 @@ def Dash_CreateGenomeDATA():
                             labelStyle={'display': 'inline-block'}),
 
                     ]),
+
+                #GO upload div
                 html.Div([
                           html.P("Upload your GO basic list file"),
+
+                          #uploading component
                           du.Upload(
                               id="upload-GO",
                               text = "Drag and drop or click to select file",
                               max_files=1,
-                              max_file_size = 10240,
+                              max_file_size = 10240, #max 10 Gb
                               pause_button=True,
                               default_style = {
                                   'width': '80%',
@@ -298,20 +401,25 @@ def Dash_CreateGenomeDATA():
 
                       ], id = 'GO-container-yes'),
 
+                #GO download div
                 html.Div([
 
+                    #Breaking line
                     html.Br(),
 
+                    #Download button
                     html.Button("Download GO files", id="GO-download", n_clicks = 0, style={
                         'width': '80%',
                         'margin' : '45px 20px 10px 20px'
                         }),
 
+                    #loading circle
                     dcc.Loading(
                         type="circle",
                         children=html.Div(id="loading-output-GO", style={'margin':'20px'})
                         ),
 
+                    #div to display download has been finished
                     html.Div(id = "GO-download-output")
 
                     ], id = 'GO-container-no'),
@@ -325,11 +433,15 @@ def Dash_CreateGenomeDATA():
                     }),
 
                 ##############################################################
+
+                #CHIP-Seq files Div
                 html.Div([
                     html.H6("Upload your CHIP-Seq files"),
 
+                    # radio button div
                     html.Div([
 
+                        #radio button to select uplaod or download
                         dcc.RadioItems(
                             id = "CHIP-file-bool",
                             options=[
@@ -340,12 +452,16 @@ def Dash_CreateGenomeDATA():
                             labelStyle={'display': 'inline-block'}),
 
                     ]),
+
+                #CHIP-Seq upload div
                 html.Div([
-                          html.P("Upload your CHIP-Seq file(s) in zip format (.gz)"),
+                          html.P("Upload your CHIP-Seq file in zip format"),
+
+                          #uploading component
                           du.Upload(
                               id="upload-CHIP",
                               text = "Drag and drop or click to select file",
-                              max_file_size = 10240,
+                              max_file_size = 10240, #Max 10 Gb
                               max_files=1,
                               pause_button=True,
                               default_style = {
@@ -360,8 +476,10 @@ def Dash_CreateGenomeDATA():
 
                       ], id = 'CHIP-container-yes'),
 
+                # CHIP-Seq download div
                 html.Div([
 
+                    # textbox entry
                     dcc.Input(
                       id="CHIP-entry",
                       type="text",
@@ -371,16 +489,19 @@ def Dash_CreateGenomeDATA():
                           'margin' : '10px'
                       }),
 
+                    #download button
                     html.Button("Download CHIP-Seq files", id="CHIP-download", n_clicks = 0, style={
                         'width': '80%',
                         'margin' : '10px',
                         }),
 
+                    #loading circle
                     dcc.Loading(
                         type="circle",
                         children=html.Div(id="loading-output-CHIP", style={'margin':'20px'})
                         ),
 
+                    #div used to display finished download
                     html.Div(id = "CHIP-download-output")
 
                     ], id = 'CHIP-container-no'),
@@ -393,17 +514,20 @@ def Dash_CreateGenomeDATA():
                     'display' : 'none'
                     }),
 
+                #Submit button
                 html.Button("Submit", id = "submit-button", n_clicks = 0, style={
                     'width': '30%',
                     'margin' : '10px 35%',
-                    'display' : 'none' #A CHANGER UNE FOIS QUE LE DATA PROCESSING FINI !!!!!
+                    'display' : 'none'
                     }),
 
+                #loading circle
                 dcc.Loading(
                     type="circle",
                     children=html.Div(id="loading-submit-button",style={'margin':'30px'})
                     ),
 
+                #div used in case file missing
                 html.Div(id = "submit-prompt", children = "Please check your content", style={
                     'width': '30%',
                     'margin' : '10px 35%',
@@ -413,10 +537,18 @@ def Dash_CreateGenomeDATA():
             ], value = "data-loading", id = "tab-data-loading"),
 
 #########################################################################
+
+            #data processing tab
             dcc.Tab(label='Data Processing', id = "tab-data-processing", value = "data-processing",disabled = True, children=[
 
+                #main div of data processing
                 html.Div([
 
+                    # The following code will be displayed as such:
+                    # 7 steps, each of them will have an attributed text and
+                    # loading circle that will let the user know where the
+                    # program is at
+                    ################################################
                     html.Div([
                             "Extracting TE data from Repbase sequences"
 
@@ -431,6 +563,7 @@ def Dash_CreateGenomeDATA():
                     }),
                     html.Div([
 
+                        #loading circle
                         dcc.Loading(
                             type="circle",
                             children=html.Div(id="loading-repbase", style={'margin':'20px'})
@@ -447,6 +580,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Extracting TE data from TE file"
 
@@ -475,7 +609,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
-
+                    ################################################
                     html.Div([
                             "Extracting NCBI annotations from GFF file"
 
@@ -504,7 +638,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
-
+                    ################################################
                     html.Div([
                             "Extracting gene ontology from GO-basic file"
 
@@ -533,7 +667,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
-
+                    ################################################
                     html.Div([
                             "Copying SVG files from wikipathways"
 
@@ -562,7 +696,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
-
+                    ################################################
                     html.Div([
                             "Transforming CHIP-Seq Data"
 
@@ -591,6 +725,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Finalising files and results"
 
@@ -619,8 +754,6 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
-
-
                 ], style = {
                     'width': '80%',
                     'margin' : '10px 10%',
@@ -628,21 +761,31 @@ def Dash_CreateGenomeDATA():
                     })
             ]),
 #########################################################################
+            # TE selection tab
             dcc.Tab(label='TE Selection', id = "tab-TE-selection", value = "TE-selection",disabled = True,children=[
 
+                #main div of TE selection tab
                 html.Div(children = [
 
                     html.H6("Select your TE(s) from the dropdown list"),
                     html.P("Up to 3 families (same superfamily)"),
 
+                    #dropdown menu
                     dcc.Dropdown(
                         id='TE-dropdown',
                         placeholder = 'Enter your TE(s) name',
                         style = {'margin':'2% 0% 2% 0%'}
                     ),
+
+                    #div used to display selected item from dropdown menu
                     html.Div(id = "TE-selected", style = {'margin':'0% 0% 2% 0%'}),
+
+                    #selection button
                     html.Button('Select TE', id='TE-select-button', n_clicks=0),
+
                     html.Div("Merge TE families:", style = {'margin':'2% 0% 0% 0%'}),
+
+                    #radio button used to select merging
                     dcc.RadioItems(
                         options=[
                             {'label': 'Yes', 'value': 'yes'},
@@ -653,8 +796,10 @@ def Dash_CreateGenomeDATA():
                         labelStyle={'display': 'inline-block', 'margin':'20px'}
                     ),
 
+                    #submit button
                     html.Button('Submit', id='TE-finish-button', n_clicks=0),
 
+                    #loading circle
                     dcc.Loading(
                         type="circle",
                         children=html.Div(id="loading-TE-selection", style={'margin':'20px'})
@@ -669,9 +814,19 @@ def Dash_CreateGenomeDATA():
             ]),
 
 #########################################################################
+
+            #TE processing tab
             dcc.Tab(label='TE Processing', id = "tab-TE-processing", value = "TE-processing",disabled = True, children=[
 
+                #main div of TE processing
                 html.Div([
+
+                    # The following code will be displayed as such:
+                    # 18 steps, each of them will have an attributed text and
+                    # loading circle that will let the user know where the
+                    # program is at
+                    ################################################
+
                     html.Div([
                             "Processing for the selected TE(s) and creating Selected TE File"
 
@@ -702,6 +857,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Loading TE File"
 
@@ -731,6 +887,8 @@ def Dash_CreateGenomeDATA():
                         'margin' : '2% 0px'
 
                     }),
+
+                    ################################################
                     html.Div([
                             "Creating Genic Environment File"
 
@@ -761,6 +919,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Creating TE Alignment and Phylogenetic Tree Files"
 
@@ -791,6 +950,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Creating Random Sequences and Their Genic Environment"
 
@@ -821,6 +981,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Selecting Overlap TFBS for TE Sequences"
 
@@ -851,6 +1012,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Selecting Overlap TFBS for Random Sequences"
 
@@ -881,6 +1043,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Printing Overlap TFBS for TE/Random Sequences"
 
@@ -911,6 +1074,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Creating Main File (VisualTE3.py)"
 
@@ -941,6 +1105,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Creating TE Genome Browser File Function"
 
@@ -971,6 +1136,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Creating TE Chromosome Distribution File Function"
 
@@ -1001,6 +1167,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Creating TE General Features File Function"
 
@@ -1029,6 +1196,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Creating TE Gene Distance file"
 
@@ -1057,7 +1225,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
-
+                    ################################################
                     html.Div([
                             "Creating TE Genetic Functions File"
 
@@ -1086,7 +1254,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
-
+                    ################################################
                     html.Div([
                             "Creating TE Overlapping TFBS File Function"
 
@@ -1115,7 +1283,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
-
+                    ################################################
                     html.Div([
                             "Creating TE Similarity Occurrences File Function"
 
@@ -1144,6 +1312,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Creating TE environment "
 
@@ -1172,6 +1341,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
+                    ################################################
                     html.Div([
                             "Creating summary table"
 
@@ -1200,9 +1370,7 @@ def Dash_CreateGenomeDATA():
 
                     }),
 
-
-
-                ], style = {
+                ], id = "TE-main-div", style = {
                     'width': '80%',
                     'margin' : '10px 10%',
                     'display' : 'block',
@@ -1211,103 +1379,260 @@ def Dash_CreateGenomeDATA():
             ]),
 
         ],id = "main-tabs", style = {'display': 'none'}),
+
+        ])
     ])
 
 ###############################################################################
+
+# app callbacks are used to monitor the activity of the user via an
+# Input ('id_name','component_to_listen_to')
     @app.callback(
-        [Output("genome-name-entry", "style"), Output("method-name-entry", "style"), Output("initiatition", "style"), Output("main-text", "children"), Output("main-text", "style"), Output("TE-container", "style"), Output("hr", "style"), Output("main-tabs", "style")],
-        Input("initiatition", "n_clicks"),
+
+        [Output("pre-processing", "style"),
+        Output("main-text", "children"),
+        Output("main-text", "style"),
+        Output("TE-container", "style"),
+        Output("hr", "style"),
+        Output("main-tabs", "style")],
+        Input("initiation", "n_clicks"),
+        State("genome-dropdown", "value"),
+        State("TE-dropdown-selector", "value"),
         State("genome-name-entry", "value"),
         State("method-name-entry", "value"),
         prevent_initial_call =True
     )
 
-    def start(click, GenomeName, TEmethod):
+    def start(click, genome_dropdown, TE_dropdown,GenomeName, TEmethod):
+        """
+        Arguments: listen for a click, genome name textbox, method name textbox
 
+        Description: when the user hits initiate, it will take the genome name
+                    and methode name to display it and create the appropriate
+                    directory
+
+        Returns: changes the css style of genome name textbox, method name textbox
+                initiation button, the main text with the new content, creates a
+                horizontal line and displays the tabs
+
+        """
+        #global variables that will be modified and listened to
         global pathVisual
         global pathVisualDATA
         global pathVisualDATA2
+        global Genome_Name
+        global TE_method
         global tab_status
         global enabling
 
+        Genome_Name = GenomeName
+        TE_method = TEmethod
 
+        #used in the return to hide the appropriate output
+        selectors = {'display': 'none'}
+
+        #used in the return to center the appropriate output
+        main_text_style = {'textAlign': 'center'}
+
+        #used in the return to style the appropriate output
+        style = {
+            'float':'left',
+            'width' :'25%',
+            'height': '10%',
+            'margin' : '20px',
+            'display' : 'block'
+
+            }
+
+        #used in the return to hide the appropriate output
+        hr = {'display': 'none'}
+
+        #used in the return to display the appropriate output
+        main_tabs = {'display': 'block'}
+
+        #when the user hits the initiate button and that both textboxes are not empty
         if click and GenomeName is not None and TEmethod is not None:
 
+            #used in the return to show the appropriate output
+            main_text = "Working on {} with {} method".format(GenomeName, TEmethod)
+
+            #create the main pathway with genome name and method
             pathVisual = 'VisualTE3__' + str(GenomeName) + '__' + str(TEmethod)
 
+            #create pathway if it doesn't exist
             if not os.path.exists(pathVisual):
                 os.mkdir(pathVisual)
 
+            #additional pathway
             pathVisualDATA = pathVisual + '/Downloaded'
 
+            #create additional pathway if it doesn't exist
             if not os.path.exists(pathVisualDATA):
                 os.mkdir(pathVisualDATA)
 
+            #additional pathway
             pathVisualDATA2 = pathVisualDATA + '/ChipSeq/'
 
+            #create additional pathway if it doesn't exist
             if not os.path.exists(pathVisualDATA2):
                 os.mkdir(pathVisualDATA2)
 
             # Create the (sub) directories for VisualTE3
             pathVisualCSS = pathVisual + '/css'
+
+            #create additional pathway if it doesn't exist
             if not os.path.exists(pathVisualCSS):
                    os.mkdir(pathVisualCSS)
 
-
+            #additional pathway
             pathVisualCSS_file = pathVisualCSS + '/dash-wind-streaming.css'
+
+            #create additional pathway if it doesn't exist
             if not os.path.exists(pathVisualCSS_file):
                    shutil.copyfile('Scripts/dash-wind-streaming.css', pathVisualCSS_file)
 
-            genome_name_entry = {'display': 'none'}
+            #additional pathway
+            init = pathVisual + "/__init__.py"
 
-            genome_name_entry = {'display': 'none'}
+            #create additional pathway if it doesn't exist
+            if not os.path.exists(init):
+                with open(init, "w") as file:
+                    file.write("")
 
-            init_button = {'display': 'none'}
-
-            main_text = "Working on {} with {} method".format(GenomeName, TEmethod)
-
-            main_text_style = {'textAlign': 'center'}
-
-            style = {
-                'float':'left',
-                'width' :'25%',
-                'height': '10%',
-                'margin' : '20px',
-                'display' : 'block'
-
-                }
-            hr = {'display': 'none'}
-
-            main_tabs = {'display': 'block'}
-
+            #list containing the files pathVisualDATA
             files_downloaded = os.listdir(pathVisualDATA)
 
+            #remove DS_Store if found
             if ".DS_Store" in files_downloaded:
                 files_downloaded.remove(".DS_Store")
 
-            print(len(files_downloaded))
-            if len(files_downloaded) == 15:
-                print("there1")
+            #if the program already went through and finished data processing
+            if len(files_downloaded) == 15 and not os.path.exists(pathVisual+"/second_half/VisualTE3.py"):
+
+                #enable appropriate tab
                 enabling = "tab-TE-selection"
                 tab_status = "TE-selection"
-                return genome_name_entry, genome_name_entry, init_button, main_text, main_text_style, style, hr, main_tabs
+                return selectors, main_text, main_text_style, style, hr, main_tabs
+
+            #if the program already went finished entirely
+            elif os.path.exists(pathVisual+"/second_half/VisualTE3.py"):
+
+                #enable appropriate tab
+                enabling = "tab-TE-processing"
+                tab_status = "TE-processing"
+                return selectors, main_text, main_text_style, style, hr, main_tabs
+
+            #otherwise start from the beginning
             else:
-                print("there2")
+
+                #enable appropriate tab
                 enabling = "tab-data-loading"
                 tab_status = "data-loading"
-                return genome_name_entry, genome_name_entry, init_button, main_text, main_text_style, style, hr, main_tabs
-        else:
-            style = {
-                'float':'left',
-                'width' :'25%',
-                'height': '10%',
-                'display' : 'none'
+                return selectors, main_text, main_text_style, style, hr, main_tabs
 
-                }
-            print("there2")
-            enabling = "tab-data-loading"
-            tab_status = "data-loading"
-            return {'display': 'inline', 'width': '20%'}, {'display': 'inline', 'width': '20%','margin' : '20px'}, {'display': 'inline'}, "Enter your genome name and method name" , None, style, None, {'display': 'none'}
+        elif click and GenomeName is None and TEmethod is None:
+
+            with open("DB.txt", "r") as file:
+                lines = file.readlines()
+                for line in lines:
+                    GenomeName = line.split("\t")[0]
+                    TEmethod = line.split("\t")[1]
+
+            #used in the return to show the appropriate output
+            main_text = "Working on {} with {} method".format(GenomeName, TEmethod)
+
+            #create the main pathway with genome name and method
+            pathVisual = 'VisualTE3__' + str(GenomeName) + '__' + str(TEmethod)
+
+            #create pathway if it doesn't exist
+            if not os.path.exists(pathVisual):
+                os.mkdir(pathVisual)
+
+            #additional pathway
+            pathVisualDATA = pathVisual + '/Downloaded'
+
+            #create additional pathway if it doesn't exist
+            if not os.path.exists(pathVisualDATA):
+                os.mkdir(pathVisualDATA)
+
+            #additional pathway
+            pathVisualDATA2 = pathVisualDATA + '/ChipSeq/'
+
+            #create additional pathway if it doesn't exist
+            if not os.path.exists(pathVisualDATA2):
+                os.mkdir(pathVisualDATA2)
+
+            # Create the (sub) directories for VisualTE3
+            pathVisualCSS = pathVisual + '/css'
+
+            #create additional pathway if it doesn't exist
+            if not os.path.exists(pathVisualCSS):
+                   os.mkdir(pathVisualCSS)
+
+            #additional pathway
+            pathVisualCSS_file = pathVisualCSS + '/dash-wind-streaming.css'
+
+            #create additional pathway if it doesn't exist
+            if not os.path.exists(pathVisualCSS_file):
+                   shutil.copyfile('Scripts/dash-wind-streaming.css', pathVisualCSS_file)
+
+
+            if genome_dropdown is not None and TE_dropdown is None:
+
+                #enable appropriate tab
+                enabling = "tab-TE-selection"
+                tab_status = "TE-selection"
+
+                return selectors, main_text, main_text_style, style, hr, main_tabs
+
+            elif genome_dropdown is not None and TE_dropdown is not None:
+
+                #enable appropriate tab
+                enabling = "tab-TE-processing"
+                tab_status = "TE-processing"
+                return selectors, main_text, main_text_style, style, hr, main_tabs
+
+
+        #if there were no clicks
+        else:
+
+            #do nothing
+            raise PreventUpdate
+#############################################################################
+    @app.callback(
+    Output("TE-dropdown-selector", "options"),
+    Output("TE-dropdown-selector", "disabled"),
+    Output("genome-name-entry", "disabled"),
+    Output("method-name-entry", "disabled"),
+    Output("genome-dropdown", "disabled"),
+    Input("genome-dropdown", "value"),
+    Input("genome-name-entry", "value"),
+    Input("method-name-entry", "value"),
+    prevent_initial_call=True
+    )
+    def DB(dropdown_value, GenomeName, MethodName):
+        #used to differentiate callbacks
+        ctx = dash.callback_context
+
+        #see which input triggered teh callback
+        input_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+        TE_dropdown_selector = []
+        if input_id == "genome-dropdown":
+            with open("DB.txt" , "r") as file:
+                lines = file.readlines()
+                for line in lines:
+                    if dropdown_value in line:
+                        TE = line.split("\t")[3]
+                        TE_dropdown_selector.append({"label":TE,"value":TE})
+            return TE_dropdown_selector, False, True, True, no_update
+
+        elif input_id == "genome-name-entry" or input_id == "method-name-entry":
+            if MethodName is not None or GenomeName is not None:
+                return no_update, True, False, False, True
+
+        else:
+            return no_update, True, False, False, False
 
 #############################################################################
 
@@ -1321,24 +1646,50 @@ def Dash_CreateGenomeDATA():
     prevent_initial_call=True
     )
     def callback_on_completion(iscompleted, filenames):
+        """
+        Arguments: boolean completion listening, fileNames
+
+        Description: listens for the TE files that are being uploaded, once done,
+                    it will move the files from the dash upload directory to the
+                    appropriate user directory
+
+        Returns: hide or show genome, GO, CHIP containers and submit button
+
+        """
+
+        # TE file location that will be used by other functions
         global fileTE
 
+        #folder where dahs uploads its contents
         upload_folder = "Dash_upload/"
+
+        #folder to move contents
         aim_folder = pathVisualDATA
 
+        #if it is not finished
         if not iscompleted:
             return {'display': 'none'}, {'display': 'none'}, {'display': 'none'}, {'display': 'none'}
 
+        #if file has a name
         if filenames is not None:
 
+            #get its location
             fileTE = pathVisualDATA+"/"+filenames[0]
 
+            #move it if not already done
             if not os.path.exists(fileTE):
                 file_directory = upload_folder + filenames[0]
                 shutil.move(file_directory, aim_folder)
 
-            return {'display': 'block', 'float':'left', 'width' :'20%', 'height': '10%', 'margin' : '20px'}, {'display': 'block', 'float':'left', 'width' :'20%', 'height': '10%', 'margin' : '20px'}, {'display': 'block', 'float':'left', 'width' :'20%', 'height': '10%', 'margin' : '20px'}, {'width': '30%','margin' : '10px 35%'}
+            #all the css that is used to display outputs
+            genome_container = {'display': 'block', 'float':'left', 'width' :'20%', 'height': '10%', 'margin' : '20px'}
+            GO_container = {'display': 'block', 'float':'left', 'width' :'20%', 'height': '10%', 'margin' : '20px'}
+            CHIP_container = {'display': 'block', 'float':'left', 'width' :'20%', 'height': '10%', 'margin' : '20px'}
+            submit = {'width': '30%','margin' : '10px 35%'}
 
+            return genome_container, GO_container, CHIP_container, submit
+
+        #
         return {'display': 'none'}, {'display': 'none'}, {'display': 'none'}, {'display': 'none'}
 
 #############################################################################
@@ -1347,11 +1698,23 @@ def Dash_CreateGenomeDATA():
         Input('genome-file-bool','value')
         )
     def toggle_container(toggle_value):
+        """
+        Arguments: wait for a yes or a no when user clicks on radiobutton
 
+        Description: asks user if he has the files, if yes then it will show a
+                    a certain block and hide another one and vice versa if no
+
+        Returns: display or hide the two different containers
+
+        """
+
+        #if no, show download
         if toggle_value == 'no':
             return [{'display': 'none'},{'display': 'block'}]
+        #if yes, show upload
         elif toggle_value == 'yes':
             return [{'display': 'block'},{'display': 'none'}]
+        #otherwise show none
         else:
             return [{'display': 'none'},{'display': 'none'}]
 
@@ -1363,33 +1726,61 @@ def Dash_CreateGenomeDATA():
         )
 
     def download_genome(submit, GenomeName):
+        """
+        Arguments: download click, genome name
+
+        Description: downloads the genome that the user inputs once he hits download
+
+        Returns: Display a message once finished, while downloading show a loading circle
+        """
+
+        #variables used by other functions
         global fileFNA
         global fileGFF
 
+        #if file has no name do nothing
         if GenomeName is None:
             return None, None
+
         try:
+
+            #used to download the genome
             FNAaTelecharger, FNAsize, GFFaTelecharger, GFFsize, ftpAdress = Interface_DownloadGenomes.lanceTelechargement(GenomeName, pathVisualDATA)
 
+            #create the path
             fileFNA = pathVisualDATA + '/' + FNAaTelecharger
+
+            #generate url
             url = ftpAdress + FNAaTelecharger
+
+            #download FNA file
             dash_functions.online_download(url, fileFNA)
 
+            #gunzip, move and delete duplicate
             with gzip.open(fileFNA, 'rb') as f_in:
                 with open(fileFNA[:-3], 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
             os.remove(fileFNA)
 
+            #create the path
             fileGFF = pathVisualDATA + '/' + GFFaTelecharger
+
+            #generate url
             url = ftpAdress + GFFaTelecharger
+
+            #download GFF file
             dash_functions.online_download(url, fileGFF)
 
+            #gunzip, move and delete duplicate
             with gzip.open(fileGFF, 'rb') as f_in:
                 with open(fileGFF[:-3], 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
             os.remove(fileGFF)
 
+            # return finished download and loading
             return "Downloaded {} FNA and GFF files".format(GenomeName), None
+
+        #if not found then warn user
         except Exception:
 
             return "Couldn't find {} genome files".format(GenomeName), None
@@ -1401,14 +1792,24 @@ def Dash_CreateGenomeDATA():
         )
 
     def toggle_container(toggle_value):
+        """
+        Arguments: wait for a yes or a no when user clicks on radiobutton
 
+        Description: asks user if he has the files, if yes then it will show a
+                    a certain block and hide another one and vice versa if no
+
+        Returns: display or hide the two different containers
+        """
+
+        #if no, show download
         if toggle_value == 'no':
             return [{'display': 'none'},{'display': 'block'}]
+        #if yes, show upload
         elif toggle_value == 'yes':
             return [{'display': 'block'},{'display': 'none'}]
+        #otherwise show none
         else:
             return [{'display': 'none'},{'display': 'none'}]
-
 #############################################################################
     @app.callback(
         [Output("GO-download-output", "children"), Output("loading-output-GO", "children")],
@@ -1416,16 +1817,33 @@ def Dash_CreateGenomeDATA():
         )
 
     def download_GO(click):
+        """
+        Arguments: listens for download click
+
+        Description: download GO file if user clicks download button
+
+        Returns: display download message and loading
+
+        """
+
+        #variable used by other functions
         global GO_basic_file
 
+        #when the user hits download
         if click:
+
+            #create pathway for file
             GO_basic_file = pathVisualDATA + '/go-basic.obo'
+
             url = 'http://purl.obolibrary.org/obo/go/go-basic.obo'
+
+            #download file
             dash_functions.online_download(url, GO_basic_file)
 
+            #download message and loading
             return "Downloaded all necessary GO files", None
         else:
-            return None, None
+            raise PreventUpdate
 
 #############################################################################
     @app.callback(
@@ -1433,11 +1851,22 @@ def Dash_CreateGenomeDATA():
         Input('CHIP-file-bool','value')
         )
     def toggle_container(toggle_value):
+        """
+        Arguments: wait for a yes or a no when user clicks on radiobutton
 
+        Description: asks user if he has the files, if yes then it will show a
+                    a certain block and hide another one and vice versa if no
+
+        Returns: display or hide the two different containers
+        """
+
+        #if no, show download
         if toggle_value == 'no':
             return [{'display': 'none'},{'display': 'block'}]
+        #if yes, show upload
         elif toggle_value == 'yes':
             return [{'display': 'block'},{'display': 'none'}]
+        #otherwise show none
         else:
             return [{'display': 'none'},{'display': 'none'}]
 
@@ -1446,98 +1875,149 @@ def Dash_CreateGenomeDATA():
         [Output("CHIP-download-output","children"), Output("loading-output-CHIP", "children")],
         Input("CHIP-download", "n_clicks"),
         State('CHIP-entry','value'),
-        State("genome-name-entry", "value"),
-        State("method-name-entry", "value"),
         )
 
-    def download_genome_CHIP_SEQ(submit, GenomeName, GenomeNameMain, TEmethod):
+    def download_genome_CHIP_SEQ(submit, GenomeName):
+        """
+        Arguments: download click, genome name, genome name main, method
+
+        Description: dowload CHIP files
+
+        Returns: display download message
+
+        """
+
+        #variable to be used by other functions
         global CHIP_files
 
+        #if file has no name do nothing
         if GenomeName is None:
             return None, None
         try:
+
+            #download chip files
             dash_functions.downloadENCODE(GenomeName, pathVisualDATA2)
 
+            #attribute pathway
             CHIP_files = pathVisualDATA2
 
+            #display message
             return "Downloaded {} CHIP-Seq files".format(GenomeName), None
-        except Exception as e:
-            print(e)
+        except Exception:
             return "Couldn't find {} CHIP-Seq files".format(GenomeName), None
 
 #############################################################################
-    @app.callback(Output("submit-prompt", "children"), Output("submit-prompt", "style"), Output("loading-submit-button", "children"),
+    @app.callback(
+        Output("submit-prompt", "children"),
+        Output("submit-prompt", "style"),
+        Output("loading-submit-button", "children"),
         Input("submit-button", "n_clicks"),
         prevent_initial_call=True
         )
 
     def submit(click):
+        """
+        Arguments: listens for submit button press
+
+        Description: Checks for the appropriate amount of files, moves certain files if required
+
+        Returns: move to different page
+
+        """
+
+        #variable used by other functions
         global GO_basic_file
         global CHIP_files
+        global fileGFF
+        global fileFNA
         global tab_status
         global enabling
 
+        #if the user hits submit
         if click:
+
+            #define pathwyas
             upload_folder = "Dash_upload/"
             aim_folder = pathVisualDATA
             chip_folder = pathVisualDATA2
 
+            #list the files in the upload folder
             files = os.listdir(upload_folder)
 
+            #remove .DS_Store
             if ".DS_Store" in files:
                 files.remove(".DS_Store")
 
+            #if there are files present
             if len(files) >= 1:
 
+                #for each file
                 for file in files:
-                    print(file)
 
+                    #if the file is zipped
                     if ".zip" in file:
 
+                        #unzip the file, move it and  remove duplicate
                         with zipfile.ZipFile(upload_folder+file, 'r') as zip_ref:
                             zip_ref.extractall(chip_folder)
                         os.remove(upload_folder+file)
 
+                        #update chip folder pathway
                         CHIP_files = pathVisualDATA2+file[:-4]
 
-                    else:
 
-                        if ".obo" in file:
-                            GO_basic_file = aim_folder +"/"+file
+                    elif ".obo" in file:
+                        GO_basic_file = aim_folder +"/"+file
 
-                        if not os.path.exists(aim_folder+"/"+file):
+                        if not os.path.exists(GO_basic_file):
                             file_directory = upload_folder + file
                             shutil.move(file_directory, aim_folder)
 
+                    elif ".gff" in file:
+                        fileGFF = aim_folder +"/"+file
 
+                        if not os.path.exists(fileGFF):
+                            file_directory = upload_folder + file
+                            shutil.move(file_directory, aim_folder)
+
+                    elif ".fna" in file:
+                        fileFNA = aim_folder +"/"+file
+
+                        if not os.path.exists(fileFNA):
+                            file_directory = upload_folder + file
+                            shutil.move(file_directory, aim_folder)
+
+            #list files in the user created directory
             files = os.listdir(aim_folder)
 
+            #remove .DS_Store
             if ".DS_Store" in files:
                 files.remove(".DS_Store")
 
+            #if there are 5 or more
             if len(files) >=5:
 
-                print("here1")
-
+                #move to data processing tab
                 tab_status = "data-processing"
                 enabling= "tab-data-processing"
 
                 return None, {'display' : 'none'},None
 
+            #otherwise
             else:
-                print("here2")
 
+                #move to data loading tab
                 tab_status = "data-loading"
                 enabling = "tab-data-loading"
 
+                #stay on current tab and display error message
                 return "Please control your files", {'width': '30%', 'margin' : '10px 35%', 'display' : 'block', 'textAlign': 'center'},None
 
+        #if the user doesn't click
         else:
-            print("here3")
 
-            tab_status = "data-loading"
-            enabling = "tab-data-loading"
-            return None, {'display' : 'none'},None
+            #prevent it
+            raise PreventUpdate
 
 ###############################################################################
 
@@ -1547,7 +2027,7 @@ def Dash_CreateGenomeDATA():
         Output("tab-data-loading", "disabled"),
         Output("tab-TE-selection", "disabled"),
         Output("tab-TE-processing", "disabled"),
-        Input('initiatition', 'n_clicks'),
+        Input('initiation', 'n_clicks'),
         Input('submit-button', 'n_clicks'),
         Input("loading-submit-button", "children"),
         Input('loading-TE-selection', 'children' ),
@@ -1555,7 +2035,17 @@ def Dash_CreateGenomeDATA():
         Input('loading-final','children'),
         prevent_initial_call=True
     )
-    def tab_controller(init, submit, submit_wait_loading, TE_loading_wait ,initiatition_wait_time, data_final_wait_time):
+    def tab_controller(init, submit, submit_wait_loading, TE_loading_wait ,initiation_wait_time, data_final_wait_time):
+        """
+        Arguments: listen for initiation and submit button click, with also the
+                    loading circles of main text, TE selection, submit, final
+
+        Description: in charge of the tab enabling and desabling
+
+        Returns: enables the correct tab while desabling all the others when
+                a listened button is clicked
+
+        """
 
         tab_data_processing = True
         tab_data_loading = True
@@ -1598,11 +2088,20 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: listen for the submit button click
+
+        Description: launch data processing first step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
+
         global repbase
 
         repbase = ReadInfos_TE.LireRepbase('Scripts/DATA/Repbase/Data_Repbase.txt')
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -1612,7 +2111,7 @@ def Dash_CreateGenomeDATA():
 
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
     @app.callback(
@@ -1621,11 +2120,19 @@ def Dash_CreateGenomeDATA():
         prevent_initial_call=True
     )
 
-    def run_process(click):
+    def run_process(load):
+        """
+        Arguments: wait forloading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         dash_functions.ReadRepeatMasker(fileTE, repbase, pathVisualDATA)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -1635,7 +2142,7 @@ def Dash_CreateGenomeDATA():
 
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -1645,7 +2152,16 @@ def Dash_CreateGenomeDATA():
         prevent_initial_call=True
     )
 
-    def run_process(click):
+    def run_process(load):
+        """
+        Arguments: wait forloading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
+
         global nbSeq_Assemble
         global nameOrganism
         global maxSize
@@ -1659,7 +2175,7 @@ def Dash_CreateGenomeDATA():
 
         nbSeq_Assemble, nameOrganism, maxSize, taxon, dataFrame_Gene = dash_functions.ReadGFF(fileGFF, pathVisualDATA)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -1669,7 +2185,7 @@ def Dash_CreateGenomeDATA():
 
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
     @app.callback(
@@ -1679,10 +2195,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait forloading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         ReadInfos_GeneOntology.ParsingGeneOntologyDefinition(GO_basic_file, pathVisualDATA, 2)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -1692,7 +2216,7 @@ def Dash_CreateGenomeDATA():
 
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
     @app.callback(
@@ -1702,10 +2226,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait forloading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         ReadInfos_WikiPathways.CopyPathWaysFile(pathVisualDATA)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -1715,7 +2247,7 @@ def Dash_CreateGenomeDATA():
 
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -1726,12 +2258,21 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait forloading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
+
         global dictionary_organ
         global dictionary_tissue
 
         dictionary_organ, dictionary_tissue = dash_functions.TransformChipSEQ(pathVisualDATA, CHIP_files)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -1741,7 +2282,7 @@ def Dash_CreateGenomeDATA():
 
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -1752,6 +2293,15 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait forloading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
+
         global enabling
         global tab_status
 
@@ -1768,10 +2318,16 @@ def Dash_CreateGenomeDATA():
         Create_Color.PrepareListeColor(pathVisual)
         Create_CommonDATA.PrepareCommonDATA(pathVisual, nameOrganism, nbSeq_Assemble, maxSize, taxon, fileFNA, dictionary_organ, dictionary_tissue)
 
+        with open("DB.txt", "r") as file:
+            lines = file.readlines()
+            if str(Genome_Name+"\t"+TE_method+"\t"+fileFNA.split("/")[-1]+"\t") not in lines:
+                with open("DB.txt", "a") as file:
+                    file.write(Genome_Name+"\t"+TE_method+"\t"+fileFNA.split("/")[-1]+"\t")
+
         enabling = "tab-TE-selection"
         tab_status = "TE-selection"
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -1781,13 +2337,13 @@ def Dash_CreateGenomeDATA():
 
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
     @app.callback(
         Output('TE-dropdown', 'options'),Output('TE-selected', 'children'),
         Input('loading-final','children'),
-        Input('initiatition', 'n_clicks'),
+        Input('initiation', 'n_clicks'),
         Input("main-text", "children"),
         Input('TE-select-button', 'n_clicks'),
         State('TE-dropdown', 'value'),
@@ -1795,6 +2351,17 @@ def Dash_CreateGenomeDATA():
     )
 
     def begin_TE_selection(loading_final, init_click,main, TE_select_click, value):
+        """
+        Arguments: listen for the ending of final loading, initiation button click,
+                    main text, TE select button click, dropdown values of TE
+
+        Description: initialise TE selection step by creating appropriate files,
+                    folders and environement
+
+        Returns: a dict of all the TE with families that are used by TE dropdown
+        """
+
+        #variables used by other functions
         global dataTE
         global pathVisualNEW
         global pathVisualFunctions
@@ -1805,19 +2372,29 @@ def Dash_CreateGenomeDATA():
         global indexTE
         global numberOFselection
 
+        #used to differentiate callbacks
         ctx = dash.callback_context
+
+        #see which input triggered teh callback
         input_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-        if enabling == "tab-TE-selection" and input_id == "initiatition" or input_id == "loading-final":
+        #if conditions are met from either tab selection (initiation) or loading steps
+        if enabling == "tab-TE-selection" and input_id == "initiation" or input_id == "loading-final":
 
+            #create file path for TE data
             dataTE = pathVisualDATA + '/DATA_List_TE_families.txt'
 
+            #name of the TE selection and processing step
             folder = "second_half"
 
+            #pathway of the TE selection and processing
             pathVisualNEW = pathVisual + '/' + folder
+
+            #if pathway not already present, create it
             if not os.path.exists(pathVisualNEW):
                 os.mkdir(pathVisualNEW)
 
+            #
             pathVisualFunctions = pathVisualNEW + '/Functions'
             if not os.path.exists(pathVisualFunctions):
                 os.mkdir(pathVisualFunctions)
@@ -1840,15 +2417,31 @@ def Dash_CreateGenomeDATA():
             if not os.path.exists(copyFile):
                 shutil.copyfile(originalFile, copyFile)
 
+            #create __init files used by python for imports with importlib
+            init = pathVisualNEW + "/__init__.py"
+            if not os.path.exists(init):
+                with open(init, "w") as file:
+                    file.write("")
+
+            #create __init files used by python for imports with importlib
+            init = pathVisualFunctions + "/__init__.py"
+            if not os.path.exists(init):
+                with open(init, "w") as file:
+                    file.write("")
+
             list_selection_TE = []
             numberOFselection = 0
 
+            #read TE data
             ListeCompleteTE, ListeFamilleTE, ListeSuperFamilyTE, dict_dash_TE = dash_functions.getListeTE(dataTE)
+
             return dict_dash_TE, None
 
+        #if the user presses the TE selection button
         elif input_id == "TE-select-button":
             dict_dash_TE = []
 
+            ########Start Code of Sebastien Tempel############
             indexTE = ListeCompleteTE.index(value)
 
             selectedSuperfamily = ListeSuperFamilyTE[indexTE]
@@ -1875,11 +2468,15 @@ def Dash_CreateGenomeDATA():
 
             if numberOFselection < 4:
                 list_selection_TE.append(selectedFamily[:-1])
+            ########End Code of Sebastien Tempel############
 
+            #for each TE add them to the dict that will be used by the dropdown menu
             for TE in ListeCompleteTE:
                 dict_dash_TE.append({"label":TE,"value":TE})
 
+            #show which TE was selected
             res = "Selected : " +"".join([TE+' | ' for TE in list_selection_TE])
+
             return dict_dash_TE, res
         else:
             return None, None
@@ -1892,6 +2489,12 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_TE_selection(click):
+        """
+        Arguments: Wait for the button TE submit button click
+
+        Description: launch the TE processing step
+        """
+
         global enabling
         global tab_status
         enabling = "tab-TE-processing"
@@ -1909,6 +2512,14 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click, radio_TE):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
         global ListeConsensus
 
 
@@ -1922,7 +2533,7 @@ def Dash_CreateGenomeDATA():
 
         ListeConsensus = Create_CommonDATA2.writeSelectTE(pathVisual, pathVisualNEW, OfficialName, list_selection_TE)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -1931,7 +2542,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
 
@@ -1942,6 +2553,15 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
+
         global moduleSelectTE
         global moduleCommonDATA
 
@@ -1956,7 +2576,7 @@ def Dash_CreateGenomeDATA():
         moduleCommonDATA = importlib.util.module_from_spec(loaderCommonDATA)
         loaderCommonDATA.loader.exec_module(moduleCommonDATA)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -1965,7 +2585,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -1977,6 +2597,15 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
+
         global NameSeq
         global DEB
         global FIN
@@ -1989,7 +2618,7 @@ def Dash_CreateGenomeDATA():
 
         NameSeq, DEB, FIN, Sens, Size, Similarity, listGeneSelect5, listGeneSelect3, listGeneSelectInside = Create_SelectedAnnotations.SelectAnnotations(pathVisual, pathVisualNEW, moduleSelectTE, moduleCommonDATA, list_selection_TE, ListeConsensus)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -1998,7 +2627,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
 
@@ -2009,11 +2638,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
 
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         Create_Alignment_and_Tree.AlignETPhylogeny(pathVisual, pathVisualNEW, moduleCommonDATA, moduleSelectTE, NameSeq, DEB, FIN, Sens, Size, Similarity)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2022,7 +2658,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -2034,13 +2670,22 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
+
         global randomSeqDEB
         global randomSeqFIN
         global randomSeqCHR
 
         randomSeqDEB, randomSeqFIN, randomSeqCHR = Create_Random_Sequences.RandomSequences(pathVisual, pathVisualNEW, moduleSelectTE, NameSeq, DEB, FIN, list_selection_TE, listGeneSelect5, listGeneSelect3, listGeneSelectInside)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2049,7 +2694,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -2061,6 +2706,15 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
+
         global tissue_dictionary_SelectedTE
         global organ_dictionary_SelectedTE
         global tissue_dictionary_Global
@@ -2068,7 +2722,7 @@ def Dash_CreateGenomeDATA():
 
         tissue_dictionary_SelectedTE, organ_dictionary_SelectedTE, tissue_dictionary_Global, organ_dictionary_Global = Create_Overlap_TFBS.ExtractTFBS_forTE(pathVisual, pathVisualNEW, list_selection_TE, moduleCommonDATA, NameSeq, DEB, FIN, listGeneSelect5, listGeneSelect3)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2077,7 +2731,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
 
@@ -2088,6 +2742,15 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
+
         global tissue_dictionary_RandomSeq
         global organ_dictionary_RandomSeq
         global tissue_dictionary_Global
@@ -2095,7 +2758,7 @@ def Dash_CreateGenomeDATA():
 
         tissue_dictionary_RandomSeq, organ_dictionary_RandomSeq, tissue_dictionary_Global, organ_dictionary_Global = Create_Overlap_TFBS.ExtractTFBS_forRandom(pathVisual, pathVisualNEW, list_selection_TE, moduleCommonDATA, randomSeqCHR, randomSeqDEB, randomSeqFIN, tissue_dictionary_Global, organ_dictionary_Global)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2104,7 +2767,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -2116,10 +2779,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         Create_Overlap_TFBS.PrintGlobalTFBS(pathVisualNEW, list_selection_TE, tissue_dictionary_Global, organ_dictionary_Global, tissue_dictionary_SelectedTE, organ_dictionary_SelectedTE, tissue_dictionary_RandomSeq, organ_dictionary_RandomSeq)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2128,7 +2799,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
 
@@ -2139,6 +2810,15 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
+
         global nbSeq_Assemble
         global numberTE
 
@@ -2148,7 +2828,7 @@ def Dash_CreateGenomeDATA():
         # Cree le fichier principal qui lance tous les autres
         nbSeq_Assemble, numberTE = Create_MainFile.EcrireVisualTE(pathVisual, pathVisualNEW, moduleSelectTE, moduleCommonDATA)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2157,7 +2837,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -2169,10 +2849,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         MakeFunction_GenomeBrowser.GenomeBrowser(pathVisual, pathVisualNEW, nbSeq_Assemble, numberTE)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2181,7 +2869,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -2193,10 +2881,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         MakeFunction_ChromosomeDistribution.ChromosomeDistribution(pathVisualNEW, numberTE)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2205,7 +2901,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
 
@@ -2216,10 +2912,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         MakeFunction_GeneralFeaturesDistribution.GeneralFeatures_layout(pathVisual, pathVisualNEW, numberTE)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2228,7 +2932,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -2240,10 +2944,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         MakeFunction_DistanceNeighboringGene.DistanceNeighboringGene(pathVisual, pathVisualNEW, nbSeq_Assemble, numberTE)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2252,7 +2964,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
 
@@ -2263,10 +2975,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         MakeFunction_NeighboringGeneFunctions.NeighboringGeneFunctions(pathVisual, pathVisualNEW, nbSeq_Assemble, numberTE)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2275,7 +2995,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
 
@@ -2286,10 +3006,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         MakeFunction_OverlappingTFBS.OverlappingTFBS(pathVisualNEW, nbSeq_Assemble, numberTE)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2298,7 +3026,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 ###############################################################################
 
@@ -2309,10 +3037,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         MakeFunction_SimilarityOccurrences.SimilarityOccurrences(pathVisualNEW, nbSeq_Assemble, numberTE)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2321,7 +3057,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -2333,10 +3069,18 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         MakeFunction_TEEnvironment.TEEnvironment(pathVisualNEW, nbSeq_Assemble, numberTE)
 
-        test = {
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2345,7 +3089,7 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
 
 ###############################################################################
@@ -2357,10 +3101,24 @@ def Dash_CreateGenomeDATA():
     )
 
     def run_process(click):
+        """
+        Arguments: wait for loading component of previous step to be finished
+
+        Description: initiate next step
+
+        Returns: css and loading circle to show work step and completion
+
+        """
 
         MakeFunction_SummaryTable.SummaryTable(pathVisualNEW, nbSeq_Assemble, numberTE)
 
-        test = {
+        with open("DB.txt", "r") as file:
+            lines = file.readlines()
+            if str("|".join(list_selection_TE)+"\n") not in lines:
+                with open("DB.txt", "a") as file:
+                    file.write("|".join(list_selection_TE)+"\n")
+
+        css = {
         'width': '80%',
         'font-size' : ' 24px',
         'float':'left',
@@ -2369,6 +3127,95 @@ def Dash_CreateGenomeDATA():
         'background-color':'#129dff',
         }
 
-        return None, test
+        return None, css
 
+###############################################################################
+
+    @app.callback(
+        Output('TE-main-div','children'), Output('TE-main-div', 'style'),
+        Input('loading-summary','children'),
+        Input("initiation", "n_clicks"),
+        Input("main-text", "children"),
+        prevent_initial_call=True
+    )
+
+    def run_process(init, click, main_text_load):
+        """
+        Arguments: listen for initiation click or the final loading TE processing
+                    step to be finished
+
+        Description: Display the Visualise results button for the user
+
+        Returns: display a button
+
+        """
+
+        #differentiate inputs
+        ctx = dash.callback_context
+        input_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+        css = {'textAlign': 'center'}
+
+        #differentiate inputs
+        if input_id == "initiation" and tab_status == "TE-processing" and enabling == "tab-TE-processing":
+            #dcc.Link('Visualise results', href='/Visualisation')
+
+            #create button
+            return html.Button('Visualise results', id = "visual", n_clicks = 0, style = {'margin':'10%', 'transform':'scale(1.5)'}), css
+
+        elif input_id == "loading-summary":
+            #dcc.Link('Visualise results', href='/Visualisation')
+            #create button
+            return html.Button('Visualise results', id = "visual", n_clicks = 0, style = {'margin':'10%', 'transform':'scale(1.5)'}), css
+        else:
+
+            #prevent update if conditions aren't met
+            raise PreventUpdate
+
+
+###############################################################################
+
+    @app.callback(
+        Output('main-all', 'children'),
+        #Input('url', 'pathname'),
+        Input("visual", "n_clicks"),
+        prevent_initial_call=True
+    )
+
+    def run_process(click):
+        """
+        Arguments: listens for the visualisation button click
+
+        Description: switch app layout to visualise results
+
+        Returns: change the layout to
+
+        """
+        #print(url)
+
+        #on click
+        if click:
+            # Contrived example of generating a module named as a string
+
+            #create path
+            full_module_name_raw = pathVisual+"/second_half/VisualTE3"
+
+            #change the "/" with "." in the path
+            full_module_name_processed = full_module_name_raw.replace("/",".")
+            # The file gets executed upon import, as expected.
+
+            #import the path automatically
+            VisualTE = importlib.import_module(full_module_name_processed)
+
+            #call the layout
+            return VisualTE.visual_layout
+
+        #if there are no clicks
+        else:
+
+            #don't update
+            return no_update
+
+
+    #run server
     app.run_server(debug=True)
