@@ -179,7 +179,11 @@ def Dash_CreateGenomeDATA():
                 #used to select TE method that have been done with the genome name
                 dcc.Dropdown(
                     id='TE-method-dropdown-selector',
+<<<<<<< HEAD
                     placeholder = 'Enter / Select your TE method name',
+=======
+                    placeholder = 'Enter your TE name',
+>>>>>>> aa23283de7a86d00dc2db5146496b195df21cd9f
                     style = {'margin':'2% 0% 2% 0%'},
                     disabled = True,
                     multi = False
