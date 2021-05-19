@@ -160,26 +160,35 @@ def Dash_CreateGenomeDATA():
         #creating a H1 main title centered
         html.H1(children='VisualTE V3', style = {'textAlign': 'center'}),
 
-        #creating a Div for genome and method name input
+        #creating a Div for genome and method name input / dropboxes
         html.Div([
 
-            html.H3(children = "Enter your genome name and method name", id = "main-text"),
+            html.H4(children = "Select previously processed data from dropdown menu or start new session by using the inputs", id = "main-text"),
 
             html.Div([
 
                 #used to select already processed data
                 dcc.Dropdown(
                     id='genome-dropdown',
-                    placeholder = 'Enter your genome name',
+                    placeholder = 'Enter / Select your genome name',
                     style = {'margin':'2% 0% 2% 0%'},
                     options = genome_dropdown,
                     multi = False
                 ),
 
-                #used to select TE that have been done with the genome name
+                #used to select TE method that have been done with the genome name
+                dcc.Dropdown(
+                    id='TE-method-dropdown-selector',
+                    placeholder = 'Enter / Select your TE method name',
+                    style = {'margin':'2% 0% 2% 0%'},
+                    disabled = True,
+                    multi = False
+                ),
+
+                #used to select TE that have been done with the genome name and TE method
                 dcc.Dropdown(
                     id='TE-dropdown-selector',
-                    placeholder = 'Enter your TE name',
+                    placeholder = 'Enter / Select your TE name',
                     style = {'margin':'2% 0% 2% 0%'},
                     disabled = True,
                     multi = False
@@ -1405,13 +1414,14 @@ def Dash_CreateGenomeDATA():
         Output("main-tabs", "style")],
         Input("initiation", "n_clicks"),
         State("genome-dropdown", "value"),
+        State("TE-method-dropdown-selector", "value"),
         State("TE-dropdown-selector", "value"),
         State("genome-name-entry", "value"),
         State("method-name-entry", "value"),
         prevent_initial_call =True
     )
 
-    def start(click, genome_dropdown, TE_dropdown,GenomeName, TEmethod):
+    def start(click, genome_dropdown, TE_method_dropdown, TE_dropdown,GenomeName, TEmethod):
         """
         Arguments: listen for a click, genome name textbox, method name textbox
 
@@ -1587,7 +1597,7 @@ def Dash_CreateGenomeDATA():
                    shutil.copyfile('Scripts/dash-wind-streaming.css', pathVisualCSS_file)
 
             #if only the genome dropdown has been selected, go to TE selection tab
-            if genome_dropdown is not None and TE_dropdown is None:
+            if genome_dropdown is not None and TE_method_dropdown is not None and TE_dropdown is None:
 
                 #enable appropriate tab
                 enabling = "tab-TE-selection"
@@ -1596,7 +1606,7 @@ def Dash_CreateGenomeDATA():
                 return selectors, main_text, main_text_style, style, hr, main_tabs
 
             #if both dropdowns have been selected go to visualisation tab
-            elif genome_dropdown is not None and TE_dropdown is not None:
+            elif genome_dropdown is not None and TE_method_dropdown is not None and TE_dropdown is not None:
 
                 #enable appropriate tab
                 enabling = "tab-TE-processing"
@@ -1613,6 +1623,8 @@ def Dash_CreateGenomeDATA():
     @app.callback(
     Output("TE-dropdown-selector", "options"),
     Output("TE-dropdown-selector", "disabled"),
+    Output("TE-method-dropdown-selector", "options"),
+    Output("TE-method-dropdown-selector", "disabled"),
     Output("inputs-container", "style"),
     Output("genome-dropdown", "disabled"),
     Input("genome-dropdown", "value"),
@@ -1643,6 +1655,8 @@ def Dash_CreateGenomeDATA():
 
         #used to store TE data name for TE dropdown
         TE_dropdown_selector = []
+        #used to store TE data name for TE dropdown
+        TE_method_dropdown_selector = []
 
         #if the callback was triggered by genome-dropdown
         if input_id == "genome-dropdown":
@@ -1650,7 +1664,7 @@ def Dash_CreateGenomeDATA():
             #if dropdown value is None than disable TE dropdown and revert changes
             if dropdown_value is None:
 
-                return no_update, True, display_on, no_update
+                return no_update, True, no_update, True, display_on, no_update
 
             #read DB file
             with open("DB.txt" , "r") as file:
@@ -1662,8 +1676,11 @@ def Dash_CreateGenomeDATA():
                         TE = line.split("\t")[3]
                         TE_dropdown_selector.append({"label":TE,"value":TE})
 
+                        method = line.split("\t")[1]
+                        TE_method_dropdown_selector.append({"label":method,"value":method})
+
             #enable TE dropdown and hide other field inputs
-            return TE_dropdown_selector, False, display_off, no_update
+            return TE_dropdown_selector, False, TE_method_dropdown_selector, False, display_off, no_update
 
 
         #if the inputs are beeing typed in
@@ -1673,11 +1690,11 @@ def Dash_CreateGenomeDATA():
 
                 #desable dropdown if either inputs are not empty
                 if len(MethodName) >= 1 or len(GenomeName) >= 1:
-                    return no_update, True, no_update, True
+                    return no_update, True, no_update, True, no_update, True
 
                 #enable dropdown if empty again
                 elif len(MethodName) == 0 or len(GenomeName) == 0:
-                    return no_update, True, no_update, False
+                    return no_update, True, no_update, True,no_update, False
 
             else:
 
@@ -2530,7 +2547,7 @@ def Dash_CreateGenomeDATA():
 
             return dict_dash_TE, res
         else:
-            return None, None
+            raise PreventUpdate
 
 ###############################################################################
     @app.callback(
