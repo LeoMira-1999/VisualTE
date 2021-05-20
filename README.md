@@ -26,3 +26,13 @@ pip install importlib
 ## Authors and acknowledgements
 
 VisualTE project idea and development by Sebastien Tempel who also created the background data processing and final visualisation result web page. Web based pre-data selection, data and transposable elements loading page app developed by Leonardo Mirandola and coordinated by Sebastien Tempel.
+
+## Modifications from previous VisualTE 3 build
+
+- Added a dash_uploader folder
+- modified Make_visualTE3.py
+- In Scripts folder:
+ - Modified all make_functions imports
+ - Created Interface_Main_Dash.py and dash_functions.py files
+
+dash_functions.py file contains Sebastien Tempel's functions but without the incorporated view components (tkinter)
